@@ -1,42 +1,274 @@
-<!DOCTYPE html>
-<html lang="en">
-
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>אאֵך יאיר כורתאֵך  | 🌲🌉👀</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
+<title>Æx Yair Cortex | Consultant</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<style>
+:root {
+  --bg-gradient: linear-gradient(45deg, #003C43, #135D66, #003C43);
+  --text-color: #E3FEF7;
+  --accent-color: #77B0AA;
+  --panel-bg: rgba(255, 255, 255, 0.1);
+  --transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
 
-<body>
-    <div class="content">
-        <h1 id="countdown"></h1>
+@font-face {
+  font-family: 'Neurofuturism';
+  src: url('fonts/neurofuturism.woff2') format('woff2');
+}
+
+a {
+  color: #E3FEF7;
+  text-decoration: none;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Neurofuturism', sans-serif;
+  background: var(--bg-gradient);
+  color: var(--text-color);
+  overflow: hidden;
+}
+
+.portfolio-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  perspective: 1000px;
+}
+
+.panel {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transition: var(--transition);
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.panel-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.project {
+  background: var(--panel-bg);
+  border-radius: 15px;
+  padding: 20px;
+  margin: 20px;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.project:hover {
+  transform: scale(1.05) rotate(2deg);
+  box-shadow: 0 0 20px var(--accent-color);
+}
+
+.navigation {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+}
+
+.nav-btn {
+  background: none;
+  border: 2px solid var(--accent-color);
+  color: var(--accent-color);
+  padding: 10px 20px;
+  margin: 0 10px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.nav-btn:hover {
+  background: var(--accent-color);
+  color: #000;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+.floating {
+  animation: float 5s ease-in-out infinite;
+}
+
+.kinetic-text {
+  font-size: 3em;
+  letter-spacing: 5px;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.kinetic-text span {
+  display: inline-block;
+  animation: float 3s ease-in-out infinite;
+  animation-delay: calc(0.1s * var(--i));
+}
+
+#particles-js {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+</style></head><body>
+
+<div id="particles-js"></div>
+
+<div class="portfolio-container">
+  <div class="panel" id="intro-panel">
+    <div class="panel-content">
+      <h1 class="kinetic-text">
+        <span style="--i:1">ך</span>
+        <span style="--i:2">אֵ</span>
+        <span style="--i:3">ת</span>
+        <span style="--i:4">ר</span>
+        <span style="--i:5">ו</span>
+        <span style="--i:6">כ</span>
+        <span style="--i:7">  </span>
+        <span style="--i:8">ר</span>
+        <span style="--i:9">י</span>
+        <span style="--i:10">א</span>
+        <span style="--i:11">י</span>
+        <span style="--i:12">  </span>
+        <span style="--i:13">ך</span>
+        <span style="--i:14">אֵ</span>
+        <span style="--i:15">א</span>
+      </h1>
+      <p>Warning: May Cause Excessive Innovation. Partner at Your Own Risk.</p>
     </div>
-    <script src="script.js"></script>
-</body>
+  </div>
 
-<footer>
-    <a href="">GitHub</a>
-    <a href="">Instagram</a>
-    <a href="">X</a>
-    <p>All Debts contracted and Engagements entered into, before the Adoption of this Constitution, shall be as valid against the United States under this Constitution, as under the Confederation.</p>
-    <!-- If needed, archived: 
+  <div class="panel" id="projects-panel" style="display: none;">
+    <div class="panel-content">
+      <a href=""><div class="project floating" style="--i:1">
+        <h2>Quantum Quill</h2>
+        <p>A writing app that predicts plot twists using quantum algorithms</p>
+      </div></a>
+      <a href=""><div class="project floating" style="--i:2">
+        <h2>NeuroSculpt</h2>
+        <p>3D modeling software controlled by brainwaves</p>
+      </div></a>
+      <a href=""><div class="project floating" style="--i:3">
+        <h2>Chromatic Whisper</h2>
+        <p>An AI that translates colors into symphonies</p>
+      </div></a>
+    </div>
+  </div>
 
-        https://web.archive.org/web/20240323090723/https://www.archives.gov/founding-docs/declaration-transcript
-        https://web.archive.org/web/20240323090401/https://www.archives.gov/founding-docs/bill-of-rights-transcript
-        https://web.archive.org/web/20240323091112/https://www.archives.gov/founding-docs/amendments-11-27
+  <div class="panel" id="about-panel" style="display: none;">
+    <div class="panel-content">
+      <h2>About the Creator</h2>
+      <p>I am a digital alchemist, a weaver of dreams in the loom of cyberspace. My journey began in the pixelated shadows, where lines of code whispered secrets of unseen worlds. I danced with algorithms in the neon-lit back alleys of the internet, learning to transmute data into vibrant experiences, to forge emotions from the raw materials of the digital realm. Now, I stand at the vanguard of the digital revolution, a pioneer in the art of crafting interactive narratives, immersive realities, and emotionally resonant encounters. My creations are not merely software or simulations; they are portals to new dimensions, where users can explore the depths of their own consciousness, connect with others in profound ways, and unlock the boundless potential of human imagination.</p>
+      <div id="timeline" style="width: 100%; height: 200px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;"></div>
+    </div>
+  </div>
 
-    
-    -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TDJRQ79CFQ"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-SJ1XSTYW5K');
-    </script>
-</footer>
+  <div class="panel" id="contact-panel" style="display: none;">
+    <div class="panel-content">
+      <h2>Establish Neural Link</h2>
+      <form id="contact-form">
+        <input type="text" placeholder="Your Digital Alias" required>
+        <input type="email" placeholder="Quantum Email Address" required>
+        <textarea placeholder="Encode your message here" required></textarea>
+        <button type="submit">Transmit</button>
+      </form>
+    </div>
+  </div>
+</div>
 
-<!--Made with Much Love at https://QSD.SERVICES/ -->
+<nav class="navigation">
+  <button class="nav-btn" onclick="changePanel('intro-panel')">Home</button>
+  <button class="nav-btn" onclick="changePanel('projects-panel')">Projects</button>
+  <button class="nav-btn" onclick="changePanel('about-panel')">About</button>
+  <button class="nav-btn" onclick="changePanel('contact-panel')">Contact</button>
+</nav>
 
-</html>
+<script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+<script>
+particlesJS('particles-js', {
+  "particles": {
+    "number": {"value": 80, "density": {"enable": true, "value_area": 800}},
+    "color": {"value": "#ffffff"},
+    "shape": {"type": "circle", "stroke": {"width": 0, "color": "#000000"}, "polygon": {"nb_sides": 5}},
+    "opacity": {"value": 0.5, "random": false, "anim": {"enable": false, "speed": 1, "opacity_min": 0.1, "sync": false}},
+    "size": {"value": 3, "random": true, "anim": {"enable": false, "speed": 40, "size_min": 0.1, "sync": false}},
+    "line_linked": {"enable": true, "distance": 150, "color": "#ffffff", "opacity": 0.4, "width": 1},
+    "move": {"enable": true, "speed": 6, "direction": "none", "random": false, "straight": false, "out_mode": "out", "bounce": false, "attract": {"enable": false, "rotateX": 600, "rotateY": 1200}}
+  },
+  "interactivity": {
+    "detect_on": "canvas",
+    "events": {
+      "onhover": {"enable": true, "mode": "repulse"},
+      "onclick": {"enable": true, "mode": "push"},
+      "resize": true
+    },
+    "modes": {
+      "grab": {"distance": 400, "line_linked": {"opacity": 1}},
+      "bubble": {"distance": 400, "size": 40, "duration": 2, "opacity": 8, "speed": 3},
+      "repulse": {"distance": 200, "duration": 0.4},
+      "push": {"particles_nb": 4},
+      "remove": {"particles_nb": 2}
+    }
+  },
+  "retina_detect": true
+});
+
+function changePanel(panelId) {
+  document.querySelectorAll('.panel').forEach(panel => {
+    panel.style.display = 'none';
+  });
+  document.getElementById(panelId).style.display = 'block';
+  
+  if (panelId === 'about-panel') {
+    initTimeline();
+  }
+}
+
+function initTimeline() {
+  const timeline = document.getElementById('timeline');
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, timeline.clientWidth / timeline.clientHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer();
+  
+  renderer.setSize(timeline.clientWidth, timeline.clientHeight);
+  timeline.appendChild(renderer.domElement);
+  
+  const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
+  const material = new THREE.MeshBasicMaterial({color: 0x1DE9B6, wireframe: true});
+  const torusKnot = new THREE.Mesh(geometry, material);
+  scene.add(torusKnot);
+  
+  camera.position.z = 30;
+  
+  function animate() {
+    requestAnimationFrame(animate);
+    torusKnot.rotation.x += 0.01;
+    torusKnot.rotation.y += 0.01;
+    renderer.render(scene, camera);
+  }
+  animate();
+}
+
+document.getElementById('contact-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  alert('Message transmitted through the quantum realm!');
+});
+</script>
+
+</body></html>
