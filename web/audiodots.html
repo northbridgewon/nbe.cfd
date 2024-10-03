@@ -1,0 +1,286 @@
+<html><head>
+<title>Cosmic Audio Flow Visualizer - Enhanced Reactivity</title>
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: Arial, sans-serif;
+  }
+  canvas {
+    display: block;
+  }
+  #controls {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 10px;
+    border-radius: 5px;
+    color: #fff;
+    transition: opacity 0.3s ease;
+  }
+  .control {
+    margin-bottom: 10px;
+  }
+  label {
+    display: inline-block;
+    width: 150px;
+  }
+  input[type="range"] {
+    width: 200px;
+  }
+  select {
+    width: 200px;
+  }
+</style>
+</head>
+<body>
+<canvas id="visualizer"></canvas>
+<div id="controls">
+  <div class="control">
+    <label for="flowMode">Flow Mode:</label>
+    <select id="flowMode">
+      <option value="vortex">Vortex</option>
+      <option value="wave">Wave</option>
+      <option value="spiral">Spiral</option>
+    </select>
+  </div>
+  <div class="control">
+    <label for="particleCount">Particle Count:</label>
+    <input type="range" id="particleCount" min="1000" max="50000" value="20000">
+  </div>
+  <div class="control">
+    <label for="baseFlowSpeed">Base Flow Speed:</label>
+    <input type="range" id="baseFlowSpeed" min="0.1" max="5" step="0.1" value="1">
+  </div>
+  <div class="control">
+    <label for="audioReactivity">Audio Reactivity:</label>
+    <input type="range" id="audioReactivity" min="0" max="10" step="0.1" value="5">
+  </div>
+  <div class="control">
+    <label for="colorCycle">Color Cycle Speed:</label>
+    <input type="range" id="colorCycle" min="0" max="10" step="0.1" value="0.5">
+  </div>
+  <div class="control">
+    <label for="baseParticleSize">Base Particle Size:</label>
+    <input type="range" id="baseParticleSize" min="0.5" max="5" step="0.1" value="1.5">
+  </div>
+  <div class="control">
+    <label for="trailLength">Trail Length:</label>
+    <input type="range" id="trailLength" min="0" max="0.99" step="0.01" value="0.85">
+  </div>
+  <div class="control">
+    <label for="frequencyRange">Frequency Range:</label>
+    <select id="frequencyRange">
+      <option value="all">All Frequencies</option>
+      <option value="low">Low Frequencies</option>
+      <option value="mid">Mid Frequencies</option>
+      <option value="high">High Frequencies</option>
+    </select>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('visualizer');
+const ctx = canvas.getContext('2d');
+let audioContext, analyser, dataArray;
+let particles = [];
+let time = 0;
+
+// Parameters
+let params = {
+  flowMode: 'vortex',
+  particleCount: 20000,
+  baseFlowSpeed: 1,
+  audioReactivity: 5,
+  colorCycle: 0.5,
+  baseParticleSize: 1.5,
+  trailLength: 0.85,
+  frequencyRange: 'all'
+};
+
+// Resize canvas
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Audio setup
+async function setupAudio() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    const source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+    analyser.fftSize = 1024;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+  } catch (err) {
+    console.error('Error accessing microphone:', err);
+  }
+}
+
+// Particle class
+class Particle {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.baseSize = Math.random() * params.baseParticleSize + 0.5;
+    this.size = this.baseSize;
+    this.speedX = 0;
+    this.speedY = 0;
+    this.hue = Math.random() * 360;
+  }
+
+  update(audioIntensity) {
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    let dx, dy, angle, distance, force;
+    const flowSpeed = params.baseFlowSpeed * (1 + audioIntensity * params.audioReactivity);
+
+    switch (params.flowMode) {
+      case 'vortex':
+        dx = this.x - centerX;
+        dy = this.y - centerY;
+        angle = Math.atan2(dy, dx);
+        distance = Math.sqrt(dx * dx + dy * dy);
+        force = (1 - distance / (Math.max(canvas.width, canvas.height) / 2)) * flowSpeed;
+        this.speedX = -Math.sin(angle) * force;
+        this.speedY = Math.cos(angle) * force;
+        break;
+      case 'wave':
+        angle = (this.x / canvas.width) * Math.PI * 4 + time;
+        force = Math.sin(angle) * flowSpeed;
+        this.speedX = flowSpeed;
+        this.speedY = force;
+        break;
+      case 'spiral':
+        dx = this.x - centerX;
+        dy = this.y - centerY;
+        angle = Math.atan2(dy, dx);
+        distance = Math.sqrt(dx * dx + dy * dy);
+        force = (1 - distance / (Math.max(canvas.width, canvas.height) / 2)) * flowSpeed;
+        this.speedX = Math.cos(angle + time) * force;
+        this.speedY = Math.sin(angle + time) * force;
+        break;
+    }
+
+    // Apply audio reactivity to particle size
+    this.size = this.baseSize * (1 + audioIntensity * params.audioReactivity);
+
+    this.x += this.speedX;
+    this.y += this.speedY;
+
+    // Boundary check
+    if (this.x < 0) this.x = canvas.width;
+    if (this.x > canvas.width) this.x = 0;
+    if (this.y < 0) this.y = canvas.height;
+    if (this.y > canvas.height) this.y = 0;
+
+    // Color cycling
+    this.hue = (this.hue + params.colorCycle) % 360;
+  }
+
+  draw() {
+    ctx.fillStyle = `hsla(${this.hue}, 100%, 50%, 0.8)`;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Create particles
+function createParticles() {
+  particles = [];
+  for (let i = 0; i < params.particleCount; i++) {
+    particles.push(new Particle());
+  }
+}
+
+// Get audio intensity based on frequency range
+function getAudioIntensity() {
+  if (!analyser) return 0;
+  
+  analyser.getByteFrequencyData(dataArray);
+  let sum = 0;
+  let count = 0;
+  let start = 0;
+  let end = dataArray.length;
+
+  switch (params.frequencyRange) {
+    case 'low':
+      end = Math.floor(dataArray.length / 3);
+      break;
+    case 'mid':
+      start = Math.floor(dataArray.length / 3);
+      end = Math.floor(2 * dataArray.length / 3);
+      break;
+    case 'high':
+      start = Math.floor(2 * dataArray.length / 3);
+      break;
+  }
+
+  for (let i = start; i < end; i++) {
+    sum += dataArray[i];
+    count++;
+  }
+
+  return count > 0 ? sum / (count * 255) : 0;
+}
+
+// Animation loop
+function animate() {
+  ctx.fillStyle = `rgba(0, 0, 0, ${1 - params.trailLength})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const audioIntensity = getAudioIntensity();
+
+  particles.forEach(particle => {
+    particle.update(audioIntensity);
+    particle.draw();
+  });
+
+  time += 0.01 * params.baseFlowSpeed * (1 + audioIntensity * params.audioReactivity);
+  requestAnimationFrame(animate);
+}
+
+// Setup controls
+document.querySelectorAll('#controls input, #controls select').forEach(input => {
+  input.addEventListener('input', (e) => {
+    params[e.target.id] = e.target.type === 'range' ? parseFloat(e.target.value) : e.target.value;
+    if (e.target.id === 'particleCount') {
+      createParticles();
+    }
+  });
+});
+
+// Control visibility
+let timeout;
+function showControls() {
+  document.getElementById('controls').style.opacity = '1';
+  clearTimeout(timeout);
+  timeout = setTimeout(() => {
+    document.getElementById('controls').style.opacity = '0';
+  }, 3000);
+}
+
+document.addEventListener('mousemove', showControls);
+showControls();
+
+// Start the visualizer
+setupAudio().then(() => {
+  createParticles();
+  animate();
+});
+</script>
+</body>
+</html>

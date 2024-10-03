@@ -1,0 +1,356 @@
+<html><head><base href="https://focustab.ai/">
+<title>FocusTab - Visual Time Management</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Gotham:wght@300;400;700&family=Montserrat:wght@300;400;700&display=swap');
+
+body { 
+    font-family: 'Gotham', sans-serif; 
+    background-color: #fef39a; 
+    color: #000; 
+    line-height: 1.6; 
+    margin: 0; 
+    padding: 15px 20px 20px; 
+    display: flex; 
+    flex-direction: column;
+    justify-content: flex-start; 
+    align-items: center; 
+    min-height: 100vh; 
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+.logo {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 44px;
+    font-weight: 700;
+}
+
+.tagline {
+    font-size: 17px;
+    font-weight: 300;
+}
+
+.clock-container { 
+    background-color: #fff49b; 
+    color: #000; 
+    padding: 22px; 
+    border-radius: 16px; 
+    width: 90%; 
+    max-width: 800px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+}
+
+.time-display {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.current-time { 
+    font-family: 'Montserrat', sans-serif;
+    font-size: 46px; 
+    font-weight: 300; 
+    margin-bottom: 5px;
+}
+
+.day-progress {
+    font-size: 18px;
+    font-weight: 400;
+    margin-bottom: 10px;
+}
+
+.time-remaining { 
+    font-size: 18px; 
+    color: #000; 
+    font-weight: 400;
+}
+
+.timeline-container { 
+    position: relative; 
+    margin: 40px 0; 
+}
+
+.period {
+    margin-bottom: 20px;
+}
+
+.period-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+}
+
+.period-label {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.period-progress {
+    font-size: 14px;
+    color: #555;
+}
+
+.time-blocks { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+}
+
+.time-block { 
+    width: 28px; 
+    height: 28px; 
+    background-color: #fef39a; 
+    border-radius: 4px; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    font-size: 14px; 
+    font-weight: 400; 
+    border: 1px solid #000;
+}
+
+.time-block.active { 
+    background-color: #000; 
+    color: #fff49b;
+    border: none;
+}
+
+.progression-line {
+    flex-grow: 1;
+    height: 6px;
+    background-color: #fef39a;
+    border: 1px solid #000;
+    border-left: none;
+    border-right: none;
+    margin: 0 -1px;
+    position: relative;
+    overflow: hidden;
+}
+
+.progression-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: #000;
+    transition: width 0.5s ease-in-out;
+}
+
+.footer { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    margin-top: 22px; 
+}
+
+.clock-format { 
+    display: flex; 
+    gap: 8px; 
+}
+
+.format-option { 
+    background-color: #fff49b; 
+    border: 2px solid #000;
+    color: #000; 
+    padding: 8px 16px; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    font-size: 14px; 
+    font-weight: 400; 
+    transition: background-color 0.3s ease, color 0.3s ease; 
+}
+
+.format-option.active { 
+    background-color: #000; 
+    color: #fff49b;
+}
+
+@media (max-width: 600px) {
+    .logo {
+        font-size: 36px;
+    }
+    .current-time {
+        font-size: 36px;
+    }
+    .time-blocks {
+        flex-wrap: wrap;
+    }
+    .time-block {
+        width: 24px;
+        height: 24px;
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+    .progression-line {
+        height: 4px;
+    }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">FocusTab</div>
+  <div class="tagline">Conquer the present, master your future</div>
+</div>
+<div class="clock-container">
+  <div class="time-display">
+    <div class="current-time" id="current-time">Current time : 17:15</div>
+    <div class="day-progress" id="day-progress">71.8% of day passed</div>
+    <div class="time-remaining" id="time-remaining">Time remaining today: 7 hours, 15 min</div>
+  </div>
+  <div class="timeline-container">
+    <div class="period">
+      <div class="period-header">
+        <div class="period-label">Morning</div>
+        <div class="period-progress" id="morning-progress"></div>
+      </div>
+      <div class="time-blocks" id="morning-blocks"></div>
+    </div>
+    <div class="period">
+      <div class="period-header">
+        <div class="period-label">Afternoon</div>
+        <div class="period-progress" id="afternoon-progress"></div>
+      </div>
+      <div class="time-blocks" id="afternoon-blocks"></div>
+    </div>
+    <div class="period">
+      <div class="period-header">
+        <div class="period-label">Evening</div>
+        <div class="period-progress" id="evening-progress"></div>
+      </div>
+      <div class="time-blocks" id="evening-blocks"></div>
+    </div>
+  </div>
+  <div class="footer">
+    <div class="clock-format">
+      <button class="format-option" id="24hour">24 hour</button>
+      <button class="format-option" id="ampm">am/pm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let is24Hour = true;
+
+function updateClock() {
+  const now = new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  
+  // Update current time
+  const timeString = formatTime(hours, minutes);
+  document.getElementById('current-time').textContent = `Current time : ${timeString}`;
+  
+  // Update day progress
+  const dayProgress = ((hours * 60 + minutes) / (24 * 60) * 100).toFixed(1);
+  document.getElementById('day-progress').textContent = `${dayProgress}% of day passed`;
+  
+  // Update time remaining
+  const remainingHours = 23 - hours;
+  const remainingMinutes = 60 - minutes;
+  document.getElementById('time-remaining').textContent = `Time remaining today: ${remainingHours} hours, ${remainingMinutes} min`;
+  
+  // Update time blocks and progress
+  updateTimeBlocks(hours, minutes);
+}
+
+function updateTimeBlocks(currentHour, currentMinute) {
+  updatePeriodBlocks('morning-blocks', 6, 11, currentHour, currentMinute);
+  updatePeriodBlocks('afternoon-blocks', 12, 17, currentHour, currentMinute);
+  updatePeriodBlocks('evening-blocks', 18, 23, currentHour, currentMinute);
+
+  updatePeriodProgress('morning-progress', 6, 11, currentHour, currentMinute);
+  updatePeriodProgress('afternoon-progress', 12, 17, currentHour, currentMinute);
+  updatePeriodProgress('evening-progress', 18, 23, currentHour, currentMinute);
+}
+
+function updatePeriodBlocks(id, start, end, currentHour, currentMinute) {
+  const blockContainer = document.getElementById(id);
+  blockContainer.innerHTML = '';
+  for (let i = start; i <= end; i++) {
+    const block = document.createElement('div');
+    block.className = `time-block ${i < currentHour || (i === currentHour && currentMinute > 0) ? 'active' : ''}`;
+    block.textContent = formatHourBlock(i);
+    blockContainer.appendChild(block);
+
+    if (i < end) {
+      const progressionLine = document.createElement('div');
+      progressionLine.className = 'progression-line';
+      const progressionFill = document.createElement('div');
+      progressionFill.className = 'progression-fill';
+      if (i < currentHour) {
+        progressionFill.style.width = '100%';
+      } else if (i === currentHour) {
+        progressionFill.style.width = `${(currentMinute / 60) * 100}%`;
+      } else {
+        progressionFill.style.width = '0%';
+      }
+      progressionLine.appendChild(progressionFill);
+      blockContainer.appendChild(progressionLine);
+    }
+  }
+}
+
+function updatePeriodProgress(id, start, end, currentHour, currentMinute) {
+  const progressElement = document.getElementById(id);
+  let progress = 0;
+  if (currentHour > end) {
+    progress = 100;
+  } else if (currentHour >= start) {
+    const totalMinutes = (end - start + 1) * 60;
+    const passedMinutes = (currentHour - start) * 60 + currentMinute;
+    progress = (passedMinutes / totalMinutes) * 100;
+  }
+  progressElement.textContent = `${progress.toFixed(1)}% gone`;
+}
+
+function formatTime(hours, minutes) {
+  if (is24Hour) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  } else {
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  }
+}
+
+function formatHourBlock(hour) {
+  if (is24Hour) {
+    return hour.toString().padStart(2, '0');
+  } else {
+    return hour % 12 || 12;
+  }
+}
+
+function toggleClockFormat() {
+  is24Hour = !is24Hour;
+  document.getElementById('24hour').classList.toggle('active');
+  document.getElementById('ampm').classList.toggle('active');
+  updateClock();
+}
+
+function updateFormatButtons() {
+  document.getElementById('24hour').classList.toggle('active', is24Hour);
+  document.getElementById('ampm').classList.toggle('active', !is24Hour);
+}
+
+document.getElementById('24hour').addEventListener('click', () => {
+  is24Hour = true;
+  updateFormatButtons();
+  updateClock();
+});
+
+document.getElementById('ampm').addEventListener('click', () => {
+  is24Hour = false;
+  updateFormatButtons();
+  updateClock();
+});
+
+updateFormatButtons();
+updateClock();
+setInterval(updateClock, 60000);
+</script>
+</body></html>

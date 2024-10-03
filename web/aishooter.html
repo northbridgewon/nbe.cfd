@@ -1,0 +1,748 @@
+<html><head><title>AI Shooter</title>
+<style>
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: black;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+#gameCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+#menuPanel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 10;
+}
+button, input {
+    margin: 5px;
+}
+#trainingControls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#trainingStateDisplay {
+    margin: 0 10px;
+    font-weight: bold;
+}
+.trainingButton {
+    background-color: red;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+#timeDisplay {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+}
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<div id="timeDisplay"></div>
+<div id="menuPanel">
+    <div>Generation: <span id="generationCount">0</span></div>
+    <label>Speed: <input type="number" id="speedInput" value="1" min="0.1" step="0.1"></label>
+    <label>Ray Length: <input type="number" id="rayLengthInput" value="1000" min="100"></label>
+    <label><input type="checkbox" id="showRaysCheckbox"> Show Rays</label>
+    <label><input type="checkbox" id="hideCheckbox"> Hide Graphics</label>
+    <label><input type="checkbox" id="showTimeCheckbox" checked> Show Time</label>
+    <label>Min Squares: <input type="number" id="minSquaresInput" value="0" min="0"></label>
+    <label>Max Squares: <input type="number" id="maxSquaresInput" value="40" min="0"></label>
+    <label>Teams: <input type="number" id="teamsInput" value="3" min="1"></label>
+    <label>Players per Team: <input type="number" id="playersPerTeamInput" value="5" min="1"></label>
+    <label>Round Time (seconds): <input type="number" id="roundTimeInput" value="120" min="1"></label>
+    <label>Player HP: <input type="number" id="playerHPInput" value="1" min="1"></label>
+    <label>Shooting Cooldown (ms): <input type="number" id="shootingCooldownInput" value="100" min="0"></label>
+    <button id="saveButton">Save Progress</button>
+    <button id="loadButton">Load Progress</button>
+    <button id="newRoundButton">New Round</button>
+    <div id="trainingControls">
+        <button id="trainingPrevButton" class="trainingButton">◀</button>
+        <span id="trainingStateDisplay">Training: Slow</span>
+        <button id="trainingNextButton" class="trainingButton">▶</button>
+    </div>
+</div>
+
+<script>
+const AGENT_RADIUS = 10;
+const BULLET_RADIUS = 3;
+const BULLET_SPEED = 5;
+const NUM_RAYS = 8;
+const MUTATION_RATE = 0.1;
+const EXISTENCE_PENALTY = 0.01;
+const MISSED_SHOT_PENALTY = 0.5;
+const KILL_REWARD = 100;
+const HIT_REWARD = 10;
+const TEAMKILL_PENALTY = 50;
+const TEAMHIT_PENALTY = 5;
+
+let CANVAS_WIDTH, CANVAS_HEIGHT;
+let agents = [];
+let bullets = [];
+let obstacles = [];
+let generation = 0;
+let rayLength = 1000;
+let roundTime = 120;
+let roundStartTime;
+let shootingCooldown = 100;
+
+const STORAGE_KEY = '@Xiripyu/neuro-evolution-br';
+
+const trainingStates = ['Slow', 'Fast', 'Max'];
+let currentTrainingState = 0;
+
+function generateTeamColors(numTeams) {
+    const predefinedColors = [
+        '#FF0000', '#0000FF', '#00FF00', '#FFFF00', '#FF00FF', '#FF7700',
+        '#7700FF', '#00FFFF', '#0077FF', '#7777FF', '#FF0077', '#FF7777',
+        '#77FF00', '#77FF77'
+    ];
+
+    const colors = predefinedColors.slice(0, Math.min(numTeams, predefinedColors.length));
+
+    while (colors.length < numTeams) {
+        let color;
+        do {
+            color = `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`;
+        } while (color === '#000000' || color === '#FFFFFF' || colors.includes(color));
+        colors.push(color);
+    }
+
+    return colors;
+}
+
+let teamColors = generateTeamColors(3);
+
+class Agent {
+    constructor(x, y, team, brain = null) {
+        this.x = x;
+        this.y = y;
+        this.team = team;
+        this.direction = Math.random() * Math.PI * 2;
+        this.hp = parseInt(document.getElementById('playerHPInput').value);
+        this.fitness = 0;
+        this.rayIntersections = Array(NUM_RAYS).fill(rayLength);
+        this.brain = brain || {
+            weights: new Array(NUM_RAYS * 3 + 2).fill().map(() => Math.random() * 2 - 1),
+            bias: Math.random() * 2 - 1
+        };
+        this.lastShotTime = 0;
+    }
+
+    think() {
+        let sum = this.brain.bias;
+        for (let i = 0; i < this.rayIntersections.length; i++) {
+            sum += this.rayIntersections[i] * this.brain.weights[i];
+        }
+        sum += (Date.now() - this.lastShotTime) / shootingCooldown * this.brain.weights[this.brain.weights.length - 2];
+        sum += Math.random() * this.brain.weights[this.brain.weights.length - 1];
+        return sum > 0 ? 1 : 0;
+    }
+
+    update() {
+        this.castRays();
+        const action = this.think();
+
+        if (action === 1 && Date.now() - this.lastShotTime >= shootingCooldown) {
+            this.shoot();
+        } else {
+            this.direction += (Math.random() - 0.5) * 0.5;
+        }
+
+        this.x += Math.cos(this.direction) * 2;
+        this.y += Math.sin(this.direction) * 2;
+
+        if (this.x < 0 || this.x > CANVAS_WIDTH || this.y < 0 || this.y > CANVAS_HEIGHT || this.checkCollision()) {
+            this.x -= Math.cos(this.direction) * 2;
+            this.y -= Math.sin(this.direction) * 2;
+            this.direction += Math.PI;
+        }
+
+        this.fitness -= EXISTENCE_PENALTY;
+    }
+
+    shoot() {
+        bullets.push({
+            x: this.x + Math.cos(this.direction) * AGENT_RADIUS,
+            y: this.y + Math.sin(this.direction) * AGENT_RADIUS,
+            direction: this.direction,
+            team: this.team,
+            agent: this
+        });
+        this.lastShotTime = Date.now();
+    }
+
+    castRays() {
+        for (let i = 0; i < NUM_RAYS; i++) {
+            const rayAngle = this.direction - Math.PI / 2 + i * Math.PI / (NUM_RAYS - 1);
+            let minDistance = rayLength;
+            let objectType = 0;
+
+            const borderIntersection = this.rayIntersectsBorder(this.x, this.y, rayAngle);
+            if (borderIntersection && borderIntersection.distance < minDistance) {
+                minDistance = borderIntersection.distance;
+                objectType = 4;
+            }
+
+            for (let obstacle of obstacles) {
+                const intersection = this.rayIntersectsRect(
+                    this.x, this.y, 
+                    this.x + Math.cos(rayAngle) * rayLength, 
+                    this.y + Math.sin(rayAngle) * rayLength, 
+                    obstacle
+                );
+                if (intersection && intersection.distance < minDistance) {
+                    minDistance = intersection.distance;
+                    objectType = 1;
+                }
+            }
+
+            for (let other of agents) {
+                if (other === this || other.hp <= 0) continue;
+                const intersection = this.rayIntersectsCircle(
+                    this.x, this.y, 
+                    this.x + Math.cos(rayAngle) * rayLength, 
+                    this.y + Math.sin(rayAngle) * rayLength, 
+                    other.x, other.y, AGENT_RADIUS
+                );
+                if (intersection && intersection.distance < minDistance) {
+                    minDistance = intersection.distance;
+                    objectType = other.team === this.team ? 3 : 2;
+                }
+            }
+
+            this.rayIntersections[i] = minDistance;
+            this.rayIntersections[i + NUM_RAYS] = objectType === 2 ? 1 : 0;
+            this.rayIntersections[i + NUM_RAYS * 2] = objectType === 3 ? 1 : 0;
+        }
+    }
+
+    rayIntersectsBorder(x, y, angle) {
+        const dx = Math.cos(angle);
+        const dy = Math.sin(angle);
+        
+        let tMin = Infinity;
+        if (dx !== 0) {
+            if (dx > 0) tMin = (CANVAS_WIDTH - x) / dx;
+            else tMin = -x / dx;
+        }
+        if (dy !== 0) {
+            if (dy > 0) tMin = Math.min(tMin, (CANVAS_HEIGHT - y) / dy);
+            else tMin = Math.min(tMin, -y / dy);
+        }
+        
+        if (tMin === Infinity) return null;
+        
+        return {
+            distance: tMin,
+            x: x + dx * tMin,
+            y: y + dy * tMin
+        };
+    }
+
+    rayIntersectsRect(x1, y1, x2, y2, rect) {
+        const left = rect.x;
+        const right = rect.x + rect.width;
+        const top = rect.y;
+        const bottom = rect.y + rect.height;
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+
+        const txmin = (left - x1) / dx;
+        const txmax = (right - x1) / dx;
+        const tymin = (top - y1) / dy;
+        const tymax = (bottom - y1) / dy;
+
+        const tmin = Math.max(Math.min(txmin, txmax), Math.min(tymin, tymax));
+        const tmax = Math.min(Math.max(txmin, txmax), Math.max(tymin, tymax));
+
+        if (tmax < 0 || tmin > 1) return null;
+
+        return {
+            distance: tmin * Math.sqrt(dx * dx + dy * dy),
+            x: x1 + tmin * dx,
+            y: y1 + tmin * dy
+        };
+    }
+
+    rayIntersectsCircle(x1, y1, x2, y2, cx, cy, r) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const a = dx * dx + dy * dy;
+        const b = 2 * (dx * (x1 - cx) + dy * (y1 - cy));
+        const c = cx * cx + cy * cy + x1 * x1 + y1 * y1 - 2 * (cx * x1 + cy * y1) - r * r;
+        const discriminant = b * b - 4 * a * c;
+
+        if (discriminant < 0) return null;
+
+        const t1 = (-b - Math.sqrt(discriminant)) / (2 * a);
+        const t2 = (-b + Math.sqrt(discriminant)) / (2 * a);
+
+        if (t1 >= 0 && t1 <= 1) {
+            return {
+                distance: t1 * Math.sqrt(dx * dx + dy * dy),
+                x: x1 + t1 * dx,
+                y: y1 + t1 * dy
+            };
+        }
+
+        if (t2 >= 0 && t2 <= 1) {
+            return {
+                distance: t2 * Math.sqrt(dx * dx + dy * dy),
+                x: x1 + t2 * dx,
+                y: y1 + t2 * dy
+            };
+        }
+
+        return null;
+    }
+
+    checkCollision() {
+        for (let obstacle of obstacles) {
+            if (this.x + AGENT_RADIUS > obstacle.x && 
+                this.x - AGENT_RADIUS < obstacle.x + obstacle.width &&
+                this.y + AGENT_RADIUS > obstacle.y && 
+                this.y - AGENT_RADIUS < obstacle.y + obstacle.height) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+function initializeObstacles() {
+    obstacles = [];
+    const minSquares = parseInt(document.getElementById('minSquaresInput').value);
+    const maxSquares = parseInt(document.getElementById('maxSquaresInput').value);
+    const numSquares = Math.floor(Math.random() * (maxSquares - minSquares + 1)) + minSquares;
+    for (let i = 0; i < numSquares; i++) {
+        let x, y;
+        do {
+            x = Math.random() * (CANVAS_WIDTH - 50);
+            y = Math.random() * (CANVAS_HEIGHT - 50);
+        } while (isOverlappingObstacle(x, y));
+        
+        obstacles.push({
+            x: x,
+            y: y,
+            width: 50,
+            height: 50
+        });
+    }
+}
+
+function initializePopulation() {
+    agents = [];
+    const numTeams = parseInt(document.getElementById('teamsInput').value);
+    const playersPerTeam = parseInt(document.getElementById('playersPerTeamInput').value);
+    for (let team = 0; team < numTeams; team++) {
+        for (let i = 0; i < playersPerTeam; i++) {
+            let x, y;
+            do {
+                x = Math.random() * CANVAS_WIDTH;
+                y = Math.random() * CANVAS_HEIGHT;
+            } while (isOverlappingObstacle(x, y) || isOverlappingAgent(x, y));
+            agents.push(new Agent(x, y, team));
+        }
+    }
+}
+
+function isOverlappingObstacle(x, y) {
+    for (let obstacle of obstacles) {
+        if (x + AGENT_RADIUS > obstacle.x && 
+            x - AGENT_RADIUS < obstacle.x + obstacle.width &&
+            y + AGENT_RADIUS > obstacle.y && 
+            y - AGENT_RADIUS < obstacle.y + obstacle.height) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function isOverlappingAgent(x, y) {
+    return agents.some(agent => 
+        Math.sqrt((agent.x - x) ** 2 + (agent.y - y) ** 2) < AGENT_RADIUS * 2 + 1
+    );
+}
+
+function evolve() {
+    const newAgents = [];
+    const teamAgents = {};
+
+    for (let agent of agents) {
+        if (!teamAgents[agent.team]) {
+            teamAgents[agent.team] = [];
+        }
+        teamAgents[agent.team].push(agent);
+    }
+
+    for (let team in teamAgents) {
+        teamAgents[team].sort((a, b) => b.fitness - a.fitness);
+        const numToKeep = Math.floor(teamAgents[team].length / 2);
+
+        for (let i = 0; i < teamAgents[team].length; i++) {
+            let parent;
+            if (i < numToKeep) {
+                parent = teamAgents[team][i];
+            } else {
+                parent = teamAgents[team][Math.floor(Math.random() * numToKeep)];
+            }
+
+            let x, y;
+            do {
+                x = Math.random() * CANVAS_WIDTH;
+                y = Math.random() * CANVAS_HEIGHT;
+            } while (isOverlappingObstacle(x, y) || isOverlappingAgent(x, y));
+
+            const child = new Agent(x, y, parseInt(team), JSON.parse(JSON.stringify(parent.brain)));
+
+            if (Math.random() < MUTATION_RATE) {
+                const index = Math.floor(Math.random() * child.brain.weights.length);
+                child.brain.weights[index] += (Math.random() * 0.2 - 0.1);
+            }
+            if (Math.random() < MUTATION_RATE) {
+                child.brain.bias += (Math.random() * 0.2 - 0.1);
+            }
+
+            newAgents.push(child);
+        }
+    }
+
+    agents = newAgents;
+    generation++;
+}
+
+function update() {
+    for (let agent of agents) {
+        if (agent.hp <= 0) continue;
+        agent.update();
+    }
+
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        let bullet = bullets[i];
+        bullet.x += Math.cos(bullet.direction) * BULLET_SPEED;
+        bullet.y += Math.sin(bullet.direction) * BULLET_SPEED;
+
+        if (bullet.x < 0 || bullet.x > CANVAS_WIDTH || bullet.y < 0 || bullet.y > CANVAS_HEIGHT) {
+            bullet.agent.fitness -= MISSED_SHOT_PENALTY;
+            bullets.splice(i, 1);
+            continue;
+        }
+
+        for (let obstacle of obstacles) {
+            if (bullet.x > obstacle.x && bullet.x < obstacle.x + obstacle.width &&
+                bullet.y > obstacle.y && bullet.y < obstacle.y + obstacle.height) {
+                bullet.agent.fitness -= MISSED_SHOT_PENALTY;
+                bullets.splice(i, 1);
+                continue;
+            }
+        }
+
+        for (let agent of agents) {
+            if (agent.hp <= 0) continue;
+            const dx = agent.x - bullet.x;
+            const dy = agent.y - bullet.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < AGENT_RADIUS) {
+                agent.hp--;
+                if (agent.team === bullet.team) {
+                    bullet.agent.fitness -= TEAMHIT_PENALTY;
+                    if (agent.hp <= 0) {
+                        bullet.agent.fitness -= TEAMKILL_PENALTY;
+                    }
+                } else {
+                    bullet.agent.fitness += HIT_REWARD;
+                    if (agent.hp <= 0) {
+                        bullet.agent.fitness += KILL_REWARD;
+                    }
+                }
+                bullets.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    const aliveTeams = new Set(agents.filter(a => a.hp > 0).map(a => a.team));
+    if (aliveTeams.size <= 1 || Date.now() - roundStartTime >= roundTime * 1000) {
+        startNewRound();
+    }
+}
+
+function startNewRound() {
+    evolve();
+    initializeObstacles();
+    initializePopulation();
+    roundStartTime = Date.now();
+    bullets = [];
+}
+
+function draw() {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let obstacle of obstacles) {
+        ctx.fillStyle = 'gray';
+        ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+    }
+
+    for (let agent of agents) {
+        if (agent.hp <= 0) continue;
+
+        ctx.fillStyle = teamColors[agent.team % teamColors.length];
+        ctx.beginPath();
+        ctx.arc(agent.x, agent.y, AGENT_RADIUS, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'white';
+        ctx.beginPath();
+        ctx.moveTo(agent.x, agent.y);
+        ctx.lineTo(
+            agent.x + Math.cos(agent.direction) * AGENT_RADIUS * 1.5,
+            agent.y + Math.sin(agent.direction) * AGENT_RADIUS * 1.5
+        );
+        ctx.stroke();
+
+        if (document.getElementById('showRaysCheckbox').checked) {
+            for (let i = 0; i < NUM_RAYS; i++) {
+                const rayAngle = agent.direction - Math.PI / 2 + i * Math.PI / (NUM_RAYS - 1);
+                ctx.strokeStyle = 'rgba(255, 255, 0, 0.3)';
+                ctx.beginPath();
+                ctx.moveTo(agent.x, agent.y);
+                ctx.lineTo(
+                    agent.x + Math.cos(rayAngle) * agent.rayIntersections[i],
+                    agent.y + Math.sin(rayAngle) * agent.rayIntersections[i]
+                );
+                ctx.stroke();
+            }
+        }
+    }
+
+    for (let bullet of bullets) {
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(bullet.x, bullet.y, BULLET_RADIUS, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    document.getElementById('generationCount').textContent = generation;
+
+    if (document.getElementById('showTimeCheckbox').checked) {
+        const timeLeft = Math.max(0, roundTime - (Date.now() - roundStartTime) / 1000);
+        document.getElementById('timeDisplay').textContent = `Time: ${timeLeft.toFixed(1)}s`;
+    } else {
+        document.getElementById('timeDisplay').textContent = '';
+    }
+}
+
+function gameLoop() {
+    const speed = parseFloat(document.getElementById('speedInput').value);
+    for (let i = 0; i < speed; i++) {
+        update();
+    }
+    if (!document.getElementById('hideCheckbox').checked) {
+        draw();
+    }
+    requestAnimationFrame(gameLoop);
+}
+
+function saveProgress() {
+    const data = JSON.stringify({
+        agents: agents.map(a => ({
+            team: a.team,
+            brain: a.brain
+        })),
+        generation: generation
+    });
+    const blob = new Blob([data], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'evolution_progress.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function loadProgress() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = function(event) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const data = JSON.parse(event.target.result);
+            initializeObstacles();
+            agents = data.agents.map(a => {
+                let x, y;
+                do {
+                    x = Math.random() * CANVAS_WIDTH;
+                    y = Math.random() * CANVAS_HEIGHT;
+                } while (isOverlappingObstacle(x, y) || isOverlappingAgent(x, y));
+                return new Agent(x, y, a.team, a.brain);
+            });
+            generation = data.generation;
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+function resizeCanvas() {
+    CANVAS_WIDTH = window.innerWidth;
+    CANVAS_HEIGHT = window.innerHeight;
+    const canvas = document.getElementById('gameCanvas');
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+}
+
+function saveSettings() {
+    const settings = {
+        speed: document.getElementById('speedInput').value,
+        rayLength: document.getElementById('rayLengthInput').value,
+        showRays: document.getElementById('showRaysCheckbox').checked,
+        hideGraphics: document.getElementById('hideCheckbox').checked,
+        showTime: document.getElementById('showTimeCheckbox').checked,
+        minSquares: document.getElementById('minSquaresInput').value,
+        maxSquares: document.getElementById('maxSquaresInput').value,
+        teams: document.getElementById('teamsInput').value,
+        playersPerTeam: document.getElementById('playersPerTeamInput').value,
+        roundTime: document.getElementById('roundTimeInput').value,
+        playerHP: document.getElementById('playerHPInput').value,
+        shootingCooldown: document.getElementById('shootingCooldownInput').value,
+        trainingState: currentTrainingState
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+}
+
+function loadSettings() {
+    const settings = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (settings) {
+        document.getElementById('speedInput').value = settings.speed;
+        document.getElementById('rayLengthInput').value = settings.rayLength;
+        document.getElementById('showRaysCheckbox').checked = settings.showRays;
+        document.getElementById('hideCheckbox').checked = settings.hideGraphics;
+        document.getElementById('showTimeCheckbox').checked = settings.showTime;
+        document.getElementById('minSquaresInput').value = settings.minSquares;
+        document.getElementById('maxSquaresInput').value = settings.maxSquares;
+        document.getElementById('teamsInput').value = settings.teams;
+        document.getElementById('playersPerTeamInput').value = settings.playersPerTeam;
+        document.getElementById('roundTimeInput').value = settings.roundTime;
+        document.getElementById('playerHPInput').value = settings.playerHP;
+        document.getElementById('shootingCooldownInput').value = settings.shootingCooldown;
+        setTrainingState(settings.trainingState);
+    }
+}
+
+function setTrainingState(state) {
+    currentTrainingState = state;
+    const speedInput = document.getElementById('speedInput');
+    const roundTimeInput = document.getElementById('roundTimeInput');
+    const hideCheckbox = document.getElementById('hideCheckbox');
+
+    document.getElementById('trainingStateDisplay').textContent = `Training: ${trainingStates[state]}`;
+
+    switch (trainingStates[state]) {
+        case 'Slow':
+            speedInput.value = 1.1;
+            roundTimeInput.value = 120;
+            hideCheckbox.checked = false;
+            break;
+        case 'Fast':
+            speedInput.value = 9999;
+            roundTimeInput.value = 1;
+            hideCheckbox.checked = false;
+            break;
+        case 'Max':
+            speedInput.value = 99999;
+            roundTimeInput.value = 1;
+            hideCheckbox.checked = true;
+            break;
+    }
+
+    roundTime = parseInt(roundTimeInput.value);
+    saveSettings();
+}
+
+window.addEventListener('resize', resizeCanvas);
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        const menuPanel = document.getElementById('menuPanel');
+        menuPanel.style.display = menuPanel.style.display === 'none' ? 'block' : 'none';
+    }
+});
+
+document.getElementById('rayLengthInput').addEventListener('input', (e) => {
+    rayLength = parseInt(e.target.value);
+    saveSettings();
+});
+
+document.getElementById('saveButton').addEventListener('click', saveProgress);
+document.getElementById('loadButton').addEventListener('click', loadProgress);
+document.getElementById('newRoundButton').addEventListener('click', startNewRound);
+
+document.getElementById('roundTimeInput').addEventListener('input', (e) => {
+    roundTime = parseInt(e.target.value);
+    saveSettings();
+});
+
+document.getElementById('teamsInput').addEventListener('change', (e) => {
+    const numTeams = parseInt(e.target.value);
+    teamColors = generateTeamColors(numTeams);
+    saveSettings();
+});
+
+document.getElementById('shootingCooldownInput').addEventListener('input', (e) => {
+    shootingCooldown = parseInt(e.target.value);
+    saveSettings();
+});
+
+document.getElementById('trainingPrevButton').addEventListener('click', () => {
+    currentTrainingState = (currentTrainingState - 1 + trainingStates.length) % trainingStates.length;
+    setTrainingState(currentTrainingState);
+});
+
+document.getElementById('trainingNextButton').addEventListener('click', () => {
+    currentTrainingState = (currentTrainingState + 1) % trainingStates.length;
+    setTrainingState(currentTrainingState);
+});
+
+const inputFields = document.querySelectorAll('input');
+inputFields.forEach(input => {
+    input.addEventListener('change', saveSettings);
+});
+
+resizeCanvas();
+loadSettings();
+initializeObstacles();
+initializePopulation();
+roundTime = parseInt(document.getElementById('roundTimeInput').value);
+shootingCooldown = parseInt(document.getElementById('shootingCooldownInput').value);
+roundStartTime = Date.now();
+gameLoop();
+
+</script>
+
+</body></html>

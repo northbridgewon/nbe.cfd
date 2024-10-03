@@ -1,0 +1,587 @@
+<html><head><title>Pixel Shooter</title><style>
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Courier New', monospace;
+    background-color: #000;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+  }
+  #homeScreen, #nameScreen {
+    text-align: center;
+  }
+  h1 {
+    font-size: 4em;
+    margin-bottom: 30px;
+    text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 30px #0ff;
+    animation: glow 1.5s ease-in-out infinite alternate;
+  }
+  @keyframes glow {
+    from {
+      text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 30px #0ff;
+    }
+    to {
+      text-shadow: 0 0 20px #0ff, 0 0 30px #0ff, 0 0 40px #0ff;
+    }
+  }
+  #startButton, #submitName {
+    font-size: 1.5em;
+    padding: 10px 20px;
+    background-color: #0ff;
+    color: #000;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  #startButton:hover, #submitName:hover {
+    background-color: #fff;
+    color: #000;
+    transform: scale(1.1);
+  }
+  #gameCanvas {
+    display: none;
+  }
+  .pixel {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background-color: #0ff;
+    animation: fall linear infinite;
+    top: -10px;
+  }
+  @keyframes fall {
+    to {
+      transform: translateY(100vh);
+    }
+  }
+  #instructions {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    font-size: 16px;
+    color: #0ff;
+  }
+  #gameOver {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    font-size: 2em;
+  }
+  #finalScore {
+    font-size: 1.5em;
+    margin: 20px 0;
+  }
+  #returnButton {
+    font-size: 1em;
+    padding: 10px 20px;
+    background-color: #0ff;
+    color: #000;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  #returnButton:hover {
+    background-color: #fff;
+    color: #000;
+    transform: scale(1.1);
+  }
+  #playerName {
+    font-size: 1.5em;
+    padding: 10px;
+    margin-bottom: 20px;
+    background-color: #000;
+    border: 2px solid #0ff;
+    color: #0ff;
+  }
+  #playerNameDisplay, #waveDisplay, #healthDisplay, #scoreDisplay {
+    position: absolute;
+    font-size: 18px;
+    color: #0ff;
+  }
+  #playerNameDisplay {
+    top: 10px;
+    right: 20px;
+  }
+  #waveDisplay {
+    top: 10px;
+    left: 20px;
+  }
+  #healthDisplay {
+    top: 40px;
+    left: 20px;
+  }
+  #scoreDisplay {
+    top: 70px;
+    left: 20px;
+  }
+  #pauseOverlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: #0ff;
+    font-size: 3em;
+    justify-content: center;
+    align-items: center;
+  }
+  #credits {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.2em;
+    color: #0ff;
+    text-align: center;
+    line-height: 1.5;
+  }
+  #notification {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 255, 255, 0.8);
+    color: #000;
+    padding: 20px;
+    border-radius: 10px;
+    font-size: 24px;
+    display: none;
+    z-index: 1000;
+  }
+  #leaderboard {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background-color: rgba(0, 255, 255, 0.2);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: left;
+  }
+  #leaderboard h2 {
+    margin-top: 0;
+    color: #0ff;
+  }
+  #leaderboard ol {
+    padding-left: 20px;
+    margin-bottom: 0;
+  }
+  #leaderboard li {
+    margin-bottom: 5px;
+  }
+  #versionInfo {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    font-size: 14px;
+    color: #0ff;
+  }
+</style></head><body>
+<div id="homeScreen">
+  <h1>Pixel Shooter</h1>
+  <button id="startButton">Start Game</button>
+  <div id="leaderboard">
+    <h2>Top 10 Players</h2>
+    <ol id="leaderboardList"></ol>
+  </div>
+  <div id="credits">
+    <div style="font-size: 1.2em;">Imagined by KingHenrik</div>
+    <div style="font-size: 1.2em;">Created by Sonnet 3.5</div>
+  </div>
+  <div id="versionInfo">V 1.0 (Updates coming soon!)</div>
+</div>
+<div id="nameScreen" style="display: none;">
+  <h2>Enter Your Name</h2>
+  <input type="text" id="playerName" maxlength="15" placeholder="Your Name">
+  <button id="submitName">Submit</button>
+</div>
+<canvas id="gameCanvas"></canvas>
+<div id="instructions">
+  Move: WASD<br>
+  Shoot: Click (every 0.5s)<br>
+  Pause: Q<br>
+  Heal: Tab (costs 30 points)
+</div>
+<div id="playerNameDisplay"></div>
+<div id="waveDisplay"></div>
+<div id="healthDisplay"></div>
+<div id="scoreDisplay"></div>
+<div id="gameOver">
+  <h2>Game Over</h2>
+  <div id="finalScore"></div>
+  <button id="returnButton">Return to Home</button>
+</div>
+<div id="pauseOverlay">PAUSED</div>
+<div id="notification"></div>
+
+<script>
+const homeScreen = document.getElementById('homeScreen');
+const nameScreen = document.getElementById('nameScreen');
+const startButton = document.getElementById('startButton');
+const submitNameButton = document.getElementById('submitName');
+const playerNameInput = document.getElementById('playerName');
+const playerNameDisplay = document.getElementById('playerNameDisplay');
+const waveDisplay = document.getElementById('waveDisplay');
+const healthDisplay = document.getElementById('healthDisplay');
+const scoreDisplay = document.getElementById('scoreDisplay');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const gameOverScreen = document.getElementById('gameOver');
+const finalScoreDisplay = document.getElementById('finalScore');
+const returnButton = document.getElementById('returnButton');
+const pauseOverlay = document.getElementById('pauseOverlay');
+const notification = document.getElementById('notification');
+const leaderboardList = document.getElementById('leaderboardList');
+
+let playerName = '';
+let lastShootTime = 0;
+const shootCooldown = 500; // 0.5 seconds in milliseconds
+
+let particleInterval;
+
+// Leaderboard
+let leaderboard = [];
+
+function updateLeaderboard() {
+  leaderboardList.innerHTML = '';
+  leaderboard.forEach((entry, index) => {
+    const li = document.createElement('li');
+    li.textContent = `${entry.name}: ${entry.score}`;
+    leaderboardList.appendChild(li);
+  });
+}
+
+function addToLeaderboard(name, score) {
+  leaderboard.push({ name, score });
+  leaderboard.sort((a, b) => b.score - a.score);
+  leaderboard = leaderboard.slice(0, 10);
+  updateLeaderboard();
+}
+
+// Initialize leaderboard
+updateLeaderboard();
+
+// Create falling pixels
+function createPixel() {
+  const pixel = document.createElement('div');
+  pixel.classList.add('pixel');
+  pixel.style.left = Math.random() * window.innerWidth + 'px';
+  pixel.style.animationDuration = Math.random() * 5 + 10 + 's'; // Slower fall
+  document.body.appendChild(pixel);
+  
+  setTimeout(() => {
+    pixel.remove();
+  }, 15000); // Longer lifetime
+}
+
+// Start creating particles
+function startParticles() {
+  particleInterval = setInterval(createPixel, 200); // Less frequent creation
+}
+
+// Stop creating particles and remove existing ones
+function stopParticles() {
+  clearInterval(particleInterval);
+  const particles = document.querySelectorAll('.pixel');
+  particles.forEach(particle => particle.remove());
+}
+
+// Start particles on page load
+startParticles();
+
+// Game variables
+let player, enemies, bullets, score, gameRunning, currentWave, baseEnemySpeed, gamePaused;
+let keys = {
+  w: false,
+  a: false,
+  s: false,
+  d: false
+};
+
+function initGame() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  player = {
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+    radius: 20,
+    color: '#0ff',
+    speed: 5,
+    health: 100,
+    maxHealth: 100,
+    lastDamageTime: 0,
+    invincibilityTime: 500 // 0.5 seconds of invincibility after taking damage
+  };
+  
+  enemies = [];
+  bullets = [];
+  score = 0;
+  gameRunning = true;
+  gamePaused = false;
+  currentWave = 1;
+  baseEnemySpeed = 1;
+  
+  startWave();
+
+  playerNameDisplay.textContent = `Player: ${playerName}`;
+  playerNameDisplay.style.display = 'block';
+  waveDisplay.textContent = `Wave: ${currentWave}`;
+  waveDisplay.style.display = 'block';
+  updateHealthDisplay();
+  healthDisplay.style.display = 'block';
+  updateScoreDisplay();
+  scoreDisplay.style.display = 'block';
+  
+  // Stop particles when the game starts
+  stopParticles();
+}
+
+function startWave() {
+  for (let i = 0; i < 5 + currentWave; i++) {
+    spawnEnemy();
+  }
+}
+
+function spawnEnemy() {
+  const radius = Math.random() * 15 + 20; // Increased minimum size to 20
+  let x, y;
+  if (Math.random() < 0.5) {
+    x = Math.random() < 0.5 ? 0 - radius : canvas.width + radius;
+    y = Math.random() * canvas.height;
+  } else {
+    x = Math.random() * canvas.width;
+    y = Math.random() < 0.5 ? 0 - radius : canvas.height + radius;
+  }
+  const color = `hsl(${Math.random() * 360}, 50%, 50%)`;
+  const angle = Math.atan2(player.y - y, player.x - x);
+  const speed = baseEnemySpeed * (1 + currentWave * 0.1); // Increase speed with each wave
+  const velocity = {
+    x: Math.cos(angle) * speed,
+    y: Math.sin(angle) * speed
+  };
+  enemies.push({x, y, radius, color, velocity});
+}
+
+function spawnBullet(x, y, targetX, targetY) {
+  const currentTime = Date.now();
+  if (currentTime - lastShootTime >= shootCooldown) {
+    const angle = Math.atan2(targetY - y, targetX - x);
+    const velocity = {
+      x: Math.cos(angle) * player.speed * 2,
+      y: Math.sin(angle) * player.speed * 2
+    };
+    bullets.push({x, y, radius: 5, color: 'white', velocity});
+    lastShootTime = currentTime;
+  }
+}
+
+function update() {
+  if (!gameRunning || gamePaused) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Update player position based on key presses
+  if (keys.w && player.y - player.speed > player.radius) player.y -= player.speed;
+  if (keys.s && player.y + player.speed < canvas.height - player.radius) player.y += player.speed;
+  if (keys.a && player.x - player.speed > player.radius) player.x -= player.speed;
+  if (keys.d && player.x + player.speed < canvas.width - player.radius) player.x += player.speed;
+
+  // Draw player
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+  ctx.fillStyle = player.color;
+  ctx.fill();
+
+  // Update and draw bullets
+  bullets.forEach((bullet, index) => {
+    bullet.x += bullet.velocity.x;
+    bullet.y += bullet.velocity.y;
+
+    ctx.beginPath();
+    ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+    ctx.fillStyle = bullet.color;
+    ctx.fill();
+
+    if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height) {
+      bullets.splice(index, 1);
+    }
+  });
+
+  // Update and draw enemies
+  enemies.forEach((enemy, index) => {
+    const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+    const speed = baseEnemySpeed * (1 + currentWave * 0.1);
+    enemy.velocity = {
+      x: Math.cos(angle) * speed,
+      y: Math.sin(angle) * speed
+    };
+
+    enemy.x += enemy.velocity.x;
+    enemy.y += enemy.velocity.y;
+
+    ctx.beginPath();
+    ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+    ctx.fillStyle = enemy.color;
+    ctx.fill();
+
+    const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+    if (dist - enemy.radius - player.radius < 1) {
+      const currentTime = Date.now();
+      if (currentTime - player.lastDamageTime >= player.invincibilityTime) {
+        player.health -= 5;
+        updateHealthDisplay();
+        player.lastDamageTime = currentTime;
+        
+        if (player.health <= 0) {
+          gameOver();
+        }
+      }
+    }
+
+    bullets.forEach((bullet, bulletIndex) => {
+      const dist = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
+      if (dist - enemy.radius - bullet.radius < 1) {
+        enemies.splice(index, 1);
+        bullets.splice(bulletIndex, 1);
+        score++;
+        updateScoreDisplay();
+      }
+    });
+  });
+
+  // Check if wave is complete
+  if (enemies.length === 0) {
+    currentWave++;
+    waveDisplay.textContent = `Wave: ${currentWave}`;
+    startWave();
+    
+    // Check if it's time to increase max health
+    if (currentWave % 10 === 0) {
+      player.maxHealth += 10;
+      player.health = player.maxHealth;
+      updateHealthDisplay();
+      showNotification("Max Health increased by 10!");
+    }
+  }
+
+  requestAnimationFrame(update);
+}
+
+function updateHealthDisplay() {
+  healthDisplay.textContent = `Health: ${player.health}/${player.maxHealth}`;
+}
+
+function updateScoreDisplay() {
+  scoreDisplay.textContent = `Score: ${score}`;
+}
+
+function gameOver() {
+  gameRunning = false;
+  canvas.style.display = 'none';
+  gameOverScreen.style.display = 'block';
+  finalScoreDisplay.textContent = `${playerName}'s Final Score: ${score} | Waves Survived: ${currentWave}`;
+  playerNameDisplay.style.display = 'none';
+  waveDisplay.style.display = 'none';
+  healthDisplay.style.display = 'none';
+  scoreDisplay.style.display = 'none';
+  startParticles();
+  addToLeaderboard(playerName, score);
+}
+
+function returnToHome() {
+  gameOverScreen.style.display = 'none';
+  homeScreen.style.display = 'block';
+  playerName = '';
+}
+
+function togglePause() {
+  gamePaused = !gamePaused;
+  if (gamePaused) {
+    pauseOverlay.style.display = 'flex';
+  } else {
+    pauseOverlay.style.display = 'none';
+    update(); // Resume the game loop
+  }
+}
+
+function heal() {
+  if (score >= 30 && player.health < player.maxHealth) {
+    player.health = Math.min(player.maxHealth, player.health + 20);
+    score -= 30;
+    updateHealthDisplay();
+    updateScoreDisplay();
+    showNotification("Healed 20 HP!");
+  } else if (player.health >= player.maxHealth) {
+    showNotification("Already at full health!");
+  } else if (score < 30) {
+    showNotification("Not enough points to heal!");
+  }
+}
+
+function showNotification(message) {
+  notification.textContent = message;
+  notification.style.display = 'block';
+  setTimeout(() => {
+    notification.style.display = 'none';
+  }, 3000);
+}
+
+startButton.addEventListener('click', () => {
+  homeScreen.style.display = 'none';
+  nameScreen.style.display = 'block';
+});
+
+submitNameButton.addEventListener('click', () => {
+  playerName = playerNameInput.value.trim();
+  if (playerName) {
+    nameScreen.style.display = 'none';
+    canvas.style.display = 'block';
+    initGame();
+    update();
+  } else {
+    alert('Please enter a name!');
+  }
+});
+
+canvas.addEventListener('click', (e) => {
+  if (gameRunning && !gamePaused) {
+    spawnBullet(player.x, player.y, e.clientX, e.clientY);
+  }
+});
+
+returnButton.addEventListener('click', returnToHome);
+
+window.addEventListener('keydown', (e) => {
+  if (e.key.toLowerCase() in keys) {
+    keys[e.key.toLowerCase()] = true;
+  }
+  if (e.key.toLowerCase() === 'q' && gameRunning) {
+    togglePause();
+  }
+  if (e.key === 'Tab' && gameRunning && !gamePaused) {
+    e.preventDefault(); // Prevent default tab behavior
+    heal();
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.key.toLowerCase() in keys) {
+    keys[e.key.toLowerCase()] = false;
+  }
+});
+
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+</script>
+</body></html>

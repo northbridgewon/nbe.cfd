@@ -1,0 +1,251 @@
+<html><head><base href="https://handtracker.app/">
+<meta charset="utf-8">
+<title>HandTracker Pro - Advanced Finger Tracking with Depth Detection</title>
+<style>
+body {
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+    color: #fff;
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: rgba(255,255,255,0.1);
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+h1 {
+    text-align: center;
+    font-size: 2.5em;
+    margin-bottom: 30px;
+}
+#cameraContainer {
+    position: relative;
+    width: 100%;
+    height: 480px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+#cameraFeed, #handCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+}
+#cameraFeed {
+    background: #000;
+    transform: scaleX(-1);
+}
+#handCanvas {
+    pointer-events: none;
+}
+.controls {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 20px;
+}
+button {
+    background: #fdbb2d;
+    border: none;
+    padding: 10px 20px;
+    color: #1a2a6c;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+button:hover {
+    background: #1a2a6c;
+    color: #fdbb2d;
+}
+#gestureInfo {
+    background: rgba(0,0,0,0.5);
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+}
+#fingerInfo {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+.finger {
+    text-align: center;
+    padding: 10px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 5px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>HandTracker Pro</h1>
+    <div id="cameraContainer">
+        <video id="cameraFeed" autoplay playsinline></video>
+        <canvas id="handCanvas"></canvas>
+    </div>
+    <div class="controls">
+        <button id="startCamera">Start Camera</button>
+        <button id="switchCamera">Switch Camera</button>
+    </div>
+    <div id="gestureInfo">
+        <h3>Detected Gesture: <span id="currentGesture">None</span></h3>
+        <p>Move your hand in front of the camera for advanced tracking!</p>
+    </div>
+    <div id="fingerInfo">
+        <div class="finger" id="thumb">Thumb</div>
+        <div class="finger" id="index">Index</div>
+        <div class="finger" id="middle">Middle</div>
+        <div class="finger" id="ring">Ring</div>
+        <div class="finger" id="pinky">Pinky</div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+<script>
+let facingMode = "user";
+const videoElement = document.getElementById('cameraFeed');
+const canvasElement = document.getElementById('handCanvas');
+const canvasCtx = canvasElement.getContext('2d');
+let camera;
+
+const hands = new Hands({locateFile: (file) => {
+    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+}});
+
+hands.setOptions({
+    maxNumHands: 2,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.7
+});
+
+const fingerColors = {
+    thumb: '#FF0000',
+    index: '#00FF00',
+    middle: '#0000FF',
+    ring: '#FFFF00',
+    pinky: '#FF00FF'
+};
+
+hands.onResults(onResults);
+
+function onResults(results) {
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    canvasCtx.scale(facingMode === "user" ? -1 : 1, 1);
+    canvasCtx.translate(facingMode === "user" ? -canvasElement.width : 0, 0);
+    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+    if (results.multiHandLandmarks) {
+        for (const landmarks of results.multiHandLandmarks) {
+            // Draw hand skeleton
+            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#FFFFFF', lineWidth: 2});
+            
+            // Draw individual fingers with different colors and depth
+            drawFinger(canvasCtx, landmarks, [1, 2, 3, 4], fingerColors.thumb, "Thumb");
+            drawFinger(canvasCtx, landmarks, [5, 6, 7, 8], fingerColors.index, "Index");
+            drawFinger(canvasCtx, landmarks, [9, 10, 11, 12], fingerColors.middle, "Middle");
+            drawFinger(canvasCtx, landmarks, [13, 14, 15, 16], fingerColors.ring, "Ring");
+            drawFinger(canvasCtx, landmarks, [17, 18, 19, 20], fingerColors.pinky, "Pinky");
+
+            // Update finger info
+            updateFingerInfo(landmarks);
+        }
+    }
+    canvasCtx.restore();
+    
+    // Update gesture info
+    document.getElementById('currentGesture').textContent = results.multiHandLandmarks.length > 0 ? "Hand Detected" : "No Hand";
+}
+
+function drawFinger(ctx, landmarks, fingerPoints, color, fingerName) {
+    ctx.beginPath();
+    ctx.moveTo(landmarks[0].x * canvasElement.width, landmarks[0].y * canvasElement.height);
+    for (const point of fingerPoints) {
+        ctx.lineTo(landmarks[point].x * canvasElement.width, landmarks[point].y * canvasElement.height);
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    // Draw depth circles at finger joints
+    for (const point of fingerPoints) {
+        const radius = (1 - landmarks[point].z) * 10; // Adjust size based on depth
+        ctx.beginPath();
+        ctx.arc(landmarks[point].x * canvasElement.width, landmarks[point].y * canvasElement.height, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+    }
+}
+
+function updateFingerInfo(landmarks) {
+    const fingerTips = {
+        thumb: landmarks[4],
+        index: landmarks[8],
+        middle: landmarks[12],
+        ring: landmarks[16],
+        pinky: landmarks[20]
+    };
+
+    for (const [finger, tip] of Object.entries(fingerTips)) {
+        const element = document.getElementById(finger);
+        const depth = (1 - tip.z).toFixed(2);
+        element.textContent = `${finger.charAt(0).toUpperCase() + finger.slice(1)}: X:${tip.x.toFixed(2)} Y:${tip.y.toFixed(2)} Z:${depth}`;
+        element.style.backgroundColor = fingerColors[finger];
+        element.style.color = 'black';
+    }
+}
+
+function initializeCamera() {
+    camera = new Camera(videoElement, {
+        onFrame: async () => {
+            await hands.send({image: videoElement});
+        },
+        width: 1280,
+        height: 720,
+        facingMode: facingMode
+    });
+}
+
+async function startCamera() {
+    try {
+        if (camera) {
+            await camera.stop();
+        }
+        initializeCamera();
+        await camera.start();
+    } catch (err) {
+        console.error("Error starting the camera: ", err);
+        alert("Failed to start the camera. Please ensure you've granted the necessary permissions.");
+    }
+}
+
+document.getElementById('startCamera').addEventListener('click', startCamera);
+
+document.getElementById('switchCamera').addEventListener('click', async () => {
+    facingMode = facingMode === "user" ? "environment" : "user";
+    videoElement.style.transform = facingMode === "user" ? "scaleX(-1)" : "scaleX(1)";
+    await startCamera();
+});
+
+function onResize() {
+    canvasElement.width = videoElement.videoWidth;
+    canvasElement.height = videoElement.videoHeight;
+}
+
+videoElement.addEventListener('loadedmetadata', onResize);
+window.addEventListener('resize', onResize);
+
+initializeCamera();
+</script>
+</body></html>

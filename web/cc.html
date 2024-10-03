@@ -1,0 +1,486 @@
+<html><head><base href="https://campfire.space/"><title>Campfire Catharsis - Throw Away Your Troubles</title><style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #000;
+  font-family: 'Press Start 2P', monospace;
+  color: #fff;
+  overflow: hidden;
+}
+#game {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+#startScreen, #gameScreen {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+#gameScreen {
+  display: none;
+  overflow: hidden;
+}
+input, button {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  margin: 10px;
+  padding: 10px;
+  background: #000;
+  color: #fff;
+  border: 2px solid #fff;
+}
+button {
+  cursor: pointer;
+  transition: all 0.3s;
+}
+button:hover {
+  background: #fff;
+  color: #000;
+}
+#scene {
+  width: 100%;
+  height: 200%;
+  position: absolute;
+  top: -100%;
+  left: 0;
+  transition: transform 10s ease-in-out;
+}
+#starField {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+#foreground {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+#planet {
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(0deg, #005000, #007000);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  box-shadow: inset 0 20px 20px -20px rgba(0,0,0,0.5);
+}
+#campfire {
+  width: 200px;
+  height: 220px;
+  position: absolute;
+  bottom: 180px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+#campfire.disabled {
+  cursor: default;
+  pointer-events: none;
+}
+.flame {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 120px;
+  background: #FFA500;
+  border-radius: 50% 0 50% 50%;
+  transform: rotate(-45deg);
+  animation: flicker 0.5s infinite alternate;
+  box-shadow: 0 0 80px #FFA500, 0 0 30px #FF4500;
+  transition: opacity 2s;
+}
+.log {
+  position: absolute;
+  bottom: 0;
+  left: 20px;
+  width: 160px;
+  height: 40px;
+  background: linear-gradient(45deg, #8B4513, #A0522D);
+  border-radius: 20px;
+  z-index: 2;
+}
+.log:before, .log:after {
+  content: '';
+  position: absolute;
+  width: 140px;
+  height: 30px;
+  background: linear-gradient(45deg, #8B4513, #A0522D);
+  border-radius: 15px;
+}
+.log:before {
+  transform: rotate(30deg);
+  left: -20px;
+  bottom: 15px;
+}
+.log:after {
+  transform: rotate(-30deg);
+  right: -20px;
+  bottom: 15px;
+}
+.word {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  color: #FFF;
+  text-shadow: 0 0 5px #FFA500;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #fff;
+  animation: twinkle 1s infinite alternate;
+  transition: background-color 3s ease;
+}
+#quote {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-size: 24px;
+  max-width: 80%;
+  opacity: 0;
+  transition: opacity 3s ease-in, color 3s ease-in;
+  z-index: 2;
+}
+.ember {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #FFA500;
+  border-radius: 50%;
+  animation: rise 3s infinite;
+  opacity: 0;
+}
+.smoke {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: rgba(200, 200, 200, 0.3);
+  border-radius: 50%;
+  animation: smokeRise 5s infinite;
+  opacity: 0;
+  z-index: 1;
+}
+#credits {
+  position: absolute;
+  bottom: 420px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 3s ease-in;
+  z-index: 3;
+}
+#campfireInstruction {
+  position: absolute;
+  bottom: 420px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  text-align: center;
+  color: #FFA500;
+  text-shadow: 0 0 5px #FF4500;
+  opacity: 0;
+  transition: opacity 1s ease-in;
+}
+@keyframes flicker {
+  0% {transform: translateX(-50%) rotate(-45deg) scale(1);}
+  100% {transform: translateX(-50%) rotate(-45deg) scale(1.1);}
+}
+@keyframes twinkle {
+  0% {opacity: 0.5;}
+  100% {opacity: 1;}
+}
+@keyframes float {
+  0% {
+    bottom: 160px;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    bottom: 100%;
+    opacity: 0;
+  }
+}
+@keyframes rise {
+  0% {
+    bottom: 40px;
+    opacity: 1;
+  }
+  100% {
+    bottom: 400px;
+    opacity: 0;
+  }
+}
+@keyframes smokeRise {
+  0% {
+    bottom: 20px;
+    opacity: 0.7;
+    transform: translateX(-50%) scale(1);
+  }
+  100% {
+    bottom: 660px;
+    opacity: 0;
+    transform: translateX(-50%) scale(3);
+  }
+}
+</style></head><body>
+<div id="game">
+  <div id="startScreen">
+    <h1>Campfire Catharsis</h1>
+    <form id="troubleForm">
+      <input type="text" id="troubleInput" placeholder="What troubles you?" required="">
+      <button type="submit">Release Worries</button>
+    </form>
+  </div>
+  <div id="gameScreen">
+    <div id="scene">
+      <div id="starField"></div>
+      <div id="foreground">
+        <div id="planet"></div>
+        <div id="campfire">
+          <div class="flame" style="opacity: 0.95;"></div>
+          <div class="log"></div>
+        </div>
+        <div id="campfireInstruction">Throw your worries into the flame.</div>
+      </div>
+    </div>
+    <div id="quote"></div>
+    <div id="credits">An experience by <br><span style="color: #00FF00;">Greenskull AI</span><br> on YouTube</div>
+  </div>
+</div>
+<script>
+const game = document.getElementById('game');
+const startScreen = document.getElementById('startScreen');
+const gameScreen = document.getElementById('gameScreen');
+const scene = document.getElementById('scene');
+const starField = document.getElementById('starField');
+const campfire = document.getElementById('campfire');
+const troubleForm = document.getElementById('troubleForm');
+const troubleInput = document.getElementById('troubleInput');
+const flame = campfire.querySelector('.flame');
+const quoteElement = document.getElementById('quote');
+const creditsElement = document.getElementById('credits');
+const campfireInstruction = document.getElementById('campfireInstruction');
+
+let trouble = '';
+let campfirePressed = false;
+let emberInterval;
+let smokeInterval;
+
+const quotes = [
+  "The greatest glory in living lies not in never falling, but in rising every time we fall.",
+  "In the middle of difficulty lies opportunity.",
+  "The only way out is through.",
+  "Every moment is a fresh beginning.",
+  "You are stronger than you think.",
+  "Believe you can and you're halfway there.",
+  "The darkest hour has only sixty minutes.",
+  "Tough times never last, but tough people do.",
+  "When you have exhausted all possibilities, remember this: you haven't.",
+  "The oak sleeps in the acorn; the bird waits in the egg; and in the highest vision of the soul a waking angel stirs.",
+];
+
+troubleForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  trouble = troubleInput.value;
+  startScreen.style.display = 'none';
+  gameScreen.style.display = 'flex';
+  initGame();
+});
+
+function initGame() {
+  // Create detailed stars
+  for (let i = 0; i < 400; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 200 + '%';
+    star.style.animationDelay = Math.random() * 1 + 's';
+    starField.appendChild(star);
+  }
+
+  // Campfire click event
+  campfire.addEventListener('click', handleCampfireClick);
+
+  // Animate campfire
+  setInterval(() => {
+    flame.style.height = 120 + Math.random() * 40 + 'px';
+    flame.style.width = 120 + Math.random() * 40 + 'px';
+  }, 100);
+
+  // Create embers and smoke
+  emberInterval = setInterval(createEmber, 200);
+  smokeInterval = setInterval(createSmoke, 500);
+
+  // Show campfire instruction
+  setTimeout(() => {
+    campfireInstruction.style.opacity = '1';
+  }, 1000);
+}
+
+function createEmber() {
+  const ember = document.createElement('div');
+  ember.className = 'ember';
+  ember.style.left = 100 + Math.random() * 20 + 'px';
+  ember.style.animationDuration = 2 + Math.random() * 2 + 's';
+  campfire.appendChild(ember);
+  setTimeout(() => ember.remove(), 3000);
+}
+
+function createSmoke() {
+  const smoke = document.createElement('div');
+  smoke.className = 'smoke';
+  smoke.style.left = 100 + Math.random() * 20 + 'px';
+  smoke.style.animationDuration = 4 + Math.random() * 2 + 's';
+  campfire.insertBefore(smoke, campfire.firstChild);
+  setTimeout(() => smoke.remove(), 5000);
+}
+
+function handleCampfireClick() {
+  if (!campfirePressed) {
+    campfirePressed = true;
+    campfire.classList.add('disabled');
+    campfireInstruction.style.opacity = '0';
+    createWords();
+  }
+}
+
+function createWords() {
+  const words = trouble.split(' ');
+  words.forEach((word, index) => {
+    setTimeout(() => {
+      const wordElement = document.createElement('div');
+      wordElement.className = 'word';
+      wordElement.textContent = word;
+      wordElement.style.animation = `float ${5 + Math.random() * 2}s linear forwards`;
+      campfire.appendChild(wordElement);
+
+      setTimeout(() => wordElement.remove(), 7000);
+    }, index * 2000); // Changed from 1000 to 2000 to add even more delay between words
+  });
+
+  // Start the journey to the stars
+  setTimeout(journeyToStars, words.length * 2000 + 2000); // Adjusted timing
+}
+
+function journeyToStars() {
+  scene.style.transform = 'translateY(50%)';
+  
+  // Pause the scene after 10 seconds (when campfire and planet are off screen)
+  setTimeout(() => {
+    scene.style.transition = 'none';
+    scene.style.transform = 'translateY(50%)';
+    showQuote();
+  }, 10000);
+  
+  // Add more stars as we journey upwards
+  for (let i = 0; i < 200; i++) {
+    setTimeout(() => {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.left = Math.random() * 100 + '%';
+      star.style.top = Math.random() * 100 + '%';
+      star.style.animationDelay = Math.random() * 1 + 's';
+      starField.appendChild(star);
+    }, i * 30);
+  }
+}
+
+function showQuote() {
+  const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+  quoteElement.textContent = randomQuote;
+  quoteElement.style.opacity = '1';
+
+  setTimeout(() => {
+    quoteElement.style.opacity = '0';
+    setTimeout(() => {
+      quoteElement.textContent = "You are not alone.";
+      quoteElement.style.opacity = '1';
+      setTimeout(turnStarsOrange, 1000);
+    }, 3000);
+  }, 5000);
+}
+
+function turnStarsOrange() {
+  const stars = document.querySelectorAll('.star');
+  stars.forEach((star, index) => {
+    setTimeout(() => {
+      star.style.backgroundColor = '#FFA500';
+    }, index * 10);
+  });
+
+  // Gradually turn the text orange
+  let progress = 0;
+  const duration = 3000; // 3 seconds
+  const interval = 50; // Update every 50ms
+  const initialColor = [255, 255, 255]; // White
+  const finalColor = [255, 165, 0]; // Orange
+
+  const colorTransition = setInterval(() => {
+    progress += interval;
+    if (progress >= duration) {
+      clearInterval(colorTransition);
+      quoteElement.style.color = 'rgb(255, 165, 0)';
+      setTimeout(returnToCampfire, 2000); // Wait 2 seconds before returning
+    } else {
+      const r = Math.round(initialColor[0] + (finalColor[0] - initialColor[0]) * (progress / duration));
+      const g = Math.round(initialColor[1] + (finalColor[1] - initialColor[1]) * (progress / duration));
+      const b = Math.round(initialColor[2] + (finalColor[2] - initialColor[2]) * (progress / duration));
+      quoteElement.style.color = `rgb(${r}, ${g}, ${b})`;
+    }
+  }, interval);
+}
+
+function returnToCampfire() {
+  quoteElement.style.opacity = '0';
+  scene.style.transition = 'transform 10s ease-in-out';
+  scene.style.transform = 'translateY(0)';
+
+  // Fade out the stars
+  const stars = document.querySelectorAll('.star');
+  stars.forEach((star) => {
+    star.style.transition = 'opacity 5s';
+    star.style.opacity = '0';
+  });
+
+  // Extinguish the flame and stop embers
+  flame.style.opacity = '0';
+  clearInterval(emberInterval);
+
+  // Increase smoke production
+  clearInterval(smokeInterval);
+  smokeInterval = setInterval(createSmoke, 100);
+
+  // After the transition, show the credits
+  setTimeout(() => {
+    clearInterval(smokeInterval);
+    creditsElement.style.opacity = '1';
+  }, 10000);
+}
+
+</script>
+</body></html>

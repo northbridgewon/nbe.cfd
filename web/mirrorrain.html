@@ -1,0 +1,229 @@
+<html><head><base href="https://websim.ai/">
+<title>Mirror Rain - Joystick Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    font-family: Arial, sans-serif;
+  }
+  #info {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: white;
+    font-size: 14px;
+    z-index: 100;
+    background-color: rgba(0,0,0,0.5);
+    padding: 10px;
+    border-radius: 5px;
+  }
+  #joystick {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 120px;
+    height: 120px;
+    background-color: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    touch-action: none;
+  }
+  #joystick-knob {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background-color: rgba(255,255,255,0.5);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s ease-out;
+  }
+</style>
+</head>
+<body>
+<div id="info">
+  <svg width="150" height="40" viewBox="0 0 150 40">
+    <defs>
+      <linearGradient id="rainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1"></stop>
+        <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1"></stop>
+      </linearGradient>
+    </defs>
+    <rect width="150" height="40" fill="url(#rainGradient)" rx="5" ry="5"></rect>
+    <text x="75" y="25" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">Mirror Rain</text>
+    <g fill="none" stroke="white" stroke-width="1.5">
+      <line x1="15" y1="7" x2="15" y2="17"></line>
+      <line x1="22" y1="4" x2="22" y2="20"></line>
+      <line x1="29" y1="10" x2="29" y2="24"></line>
+      <line x1="128" y1="6" x2="128" y2="21"></line>
+      <line x1="135" y1="8" x2="135" y2="27"></line>
+      <line x1="142" y1="4" x2="142" y2="18"></line>
+    </g>
+  </svg>
+</div>
+<canvas id="glCanvas"></canvas>
+<div id="joystick">
+  <div id="joystick-knob"></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+let scene, camera, renderer, mirrors = [], cubeCamera, cubeRenderTarget;
+let joystickVector = { x: 0, y: 0 };
+
+function init() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer({canvas: document.getElementById('glCanvas'), antialias: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    const pointLight = new THREE.PointLight(0xffffff, 1);
+    pointLight.position.set(5, 5, 5);
+    scene.add(pointLight);
+
+    const loader = new THREE.CubeTextureLoader();
+    const texture = loader.load([
+        'https://threejs.org/examples/textures/cube/Park2/posx.jpg',
+        'https://threejs.org/examples/textures/cube/Park2/negx.jpg',
+        'https://threejs.org/examples/textures/cube/Park2/posy.jpg',
+        'https://threejs.org/examples/textures/cube/Park2/negy.jpg',
+        'https://threejs.org/examples/textures/cube/Park2/posz.jpg',
+        'https://threejs.org/examples/textures/cube/Park2/negz.jpg',
+    ]);
+    scene.background = texture;
+
+    cubeRenderTarget = new THREE.WebGLCubeRenderTarget(512, {
+        format: THREE.RGBFormat,
+        generateMipmaps: true,
+        minFilter: THREE.LinearMipmapLinearFilter
+    });
+    cubeCamera = new THREE.CubeCamera(0.1, 1000, cubeRenderTarget);
+    scene.add(cubeCamera);
+
+    for(let i = 0; i < 100; i++) {
+        createMirror();
+    }
+
+    camera.position.z = 5;
+
+    setupJoystick();
+
+    animate();
+}
+
+function createMirror() {
+    const width = Math.random() * 0.5 + 0.1;
+    const height = Math.random() * 0.5 + 0.1;
+    const depth = 0.02;
+    const geometry = new THREE.BoxGeometry(width, height, depth);
+    const material = new THREE.MeshPhysicalMaterial({
+        envMap: cubeRenderTarget.texture,
+        metalness: 1.0,
+        roughness: 0.01,
+        transparent: true,
+        opacity: 1.0,
+        side: THREE.DoubleSide,
+        envMapIntensity: 2.0
+    });
+    const mirror = new THREE.Mesh(geometry, material);
+    
+    mirror.position.set(
+        Math.random() * 10 - 5,
+        Math.random() * 10 - 5,
+        Math.random() * 10 - 5
+    );
+    
+    mirror.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+    );
+    
+    scene.add(mirror);
+    mirrors.push(mirror);
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    cubeCamera.update(renderer, scene);
+
+    mirrors.forEach(mirror => {
+        mirror.position.y -= 0.01;
+        if(mirror.position.y < -5) mirror.position.y = 5;
+        mirror.rotation.x += 0.01;
+        mirror.rotation.y += 0.01;
+    });
+
+    camera.position.x += joystickVector.x * 0.05;
+    camera.position.y += joystickVector.y * 0.05;
+
+    camera.lookAt(scene.position);
+    renderer.render(scene, camera);
+}
+
+function setupJoystick() {
+    const joystick = document.getElementById('joystick');
+    const knob = document.getElementById('joystick-knob');
+    let isDragging = false;
+
+    joystick.addEventListener('pointerdown', startDragging);
+    document.addEventListener('pointermove', drag);
+    document.addEventListener('pointerup', stopDragging);
+    document.addEventListener('pointercancel', stopDragging);
+
+    function startDragging(e) {
+        isDragging = true;
+        drag(e);
+    }
+
+    function drag(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+
+        const joystickRect = joystick.getBoundingClientRect();
+        const centerX = joystickRect.left + joystickRect.width / 2;
+        const centerY = joystickRect.top + joystickRect.height / 2;
+
+        let x = e.clientX - centerX;
+        let y = e.clientY - centerY;
+
+        const distance = Math.sqrt(x * x + y * y);
+        const maxDistance = joystickRect.width / 2;
+
+        if (distance > maxDistance) {
+            x *= maxDistance / distance;
+            y *= maxDistance / distance;
+        }
+
+        knob.style.transform = `translate(${x}px, ${y}px)`;
+
+        joystickVector.x = x / maxDistance;
+        joystickVector.y = -y / maxDistance;
+    }
+
+    function stopDragging() {
+        isDragging = false;
+        knob.style.transform = 'translate(0, 0)';
+        joystickVector.x = 0;
+        joystickVector.y = 0;
+    }
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+window.addEventListener('resize', onWindowResize);
+
+init();
+</script>
+</body></html>

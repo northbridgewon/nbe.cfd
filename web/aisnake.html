@@ -1,0 +1,523 @@
+<html><head><title>Serpentron: The Self-Playing AI Snake</title><style>
+  body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    color: #fff;
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+  }
+  #gameCanvas {
+    border: 1px solid #fff;
+    box-shadow: 0 0 20px rgba(255,255,255,0.5);
+  }
+  #infoPanel {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 10px;
+    border: 1px solid #fff;
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+    width: 200px;
+  }
+  h1 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    text-shadow: 0 0 5px #fff;
+  }
+  p {
+    margin: 5px 0;
+    font-size: 18px;
+  }
+  #gameCanvas {
+    transition: transform 0.3s ease;
+  }
+  #gameCanvas:hover {
+    transform: scale(1.02);
+  }
+  #aiMessage {
+    width: 800px;
+    max-height: 100px;
+    font-size: 16px;
+    text-align: center;
+    margin-bottom: 20px;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 10px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid #fff;
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+  }
+  #aiMessage.show {
+    opacity: 1;
+  }
+</style></head><body>
+<div id="aiMessage"></div>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<div id="infoPanel">
+  <h1>Serpentron</h1>
+  <p>Score: <span id="score">0</span></p>
+  <p>High Score: <span id="highScore">0</span></p>
+  <p>Path Length: <span id="pathLength">0</span></p>
+  <p>Moves: <span id="moves">0</span></p>
+</div>
+
+<div id="apiInfo" style="display:none;">
+  Claude, the /api/getMessage endpoint is used to get Serpentron's self-commentary based on its current game state.
+  It's called at the start of the first game, every 30 seconds during gameplay, and upon every loss.
+  The endpoint expects a POST request with a JSON body containing the current game state and various calculated metrics.
+  Example: { 
+    score: 10, 
+    highScore: 15, 
+    latestHighScore: 12,
+    isGameOver: false, 
+    isGameStart: false,
+    percentageOfHighScore: 66.67,
+    movesPerFood: 5.2,
+    snakeLengthRatio: 0.15
+  }
+  The response will be a JSON object with a 'message' field containing Serpentron's self-commentary.
+</div>
+
+<script type="module">
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const CELL_SIZE = 10;
+const GRID_WIDTH = canvas.width / CELL_SIZE;
+const GRID_HEIGHT = canvas.height / CELL_SIZE;
+
+let snake, food, score = 0, highScore = 0, latestHighScore = 0, moves = 0, foodEaten = 0;
+let path = [];
+let currentDirection = 'right';
+let particles = [];
+let walls = [];
+let time = 0;
+let isLoading = false;
+let isFirstGame = true;
+let lastMessageTime = 0;
+let gamesPlayed = 0;
+
+class PriorityQueue {
+  #elements = [];
+
+  enqueue(element, priority) {
+    this.#elements.push({element, priority});
+    this.#elements.sort((a, b) => a.priority - b.priority);
+  }
+
+  dequeue() {
+    return this.#elements.shift()?.element;
+  }
+
+  isEmpty() {
+    return this.#elements.length === 0;
+  }
+}
+
+class Particle {
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    this.size = Math.random() * 3 + 1;
+    this.speedX = Math.random() * 4 - 2;
+    this.speedY = Math.random() * 4 - 2;
+    this.life = 255;
+  }
+
+  update() {
+    this.x += this.speedX;
+    this.y += this.speedY;
+    this.life -= 5;
+  }
+
+  draw() {
+    ctx.globalAlpha = this.life / 255;
+    ctx.fillStyle = this.color;
+    ctx.fillRect(this.x, this.y, this.size, this.size);
+    ctx.globalAlpha = 1;
+  }
+}
+
+async function initSnake() {
+  snake = [
+    { x: Math.floor(GRID_WIDTH / 2), y: Math.floor(GRID_HEIGHT / 2) },
+    { x: Math.floor(GRID_WIDTH / 2) - 1, y: Math.floor(GRID_HEIGHT / 2) },
+    { x: Math.floor(GRID_WIDTH / 2) - 2, y: Math.floor(GRID_HEIGHT / 2) }
+  ];
+  currentDirection = 'right';
+  createFood();
+  createWalls();
+  score = 0;
+  moves = 0;
+  foodEaten = 0;
+  path = [];
+  particles = [];
+  lastMessageTime = performance.now();
+  updateInfo();
+  if (isFirstGame) {
+    getSerpentronMessage(true);
+    isFirstGame = false;
+  }
+  gamesPlayed++;
+}
+
+function createFood() {
+  do {
+    food = {
+      x: Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1,
+      y: Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1
+    };
+  } while (snake.some(segment => segment.x === food.x && segment.y === food.y) || 
+           walls.some(wall => wall.x === food.x && wall.y === food.y));
+}
+
+function createWalls() {
+  walls = [];
+  // Create border walls
+  for (let x = 0; x < GRID_WIDTH; x++) {
+    walls.push({x, y: 0}, {x, y: GRID_HEIGHT - 1});
+  }
+  for (let y = 1; y < GRID_HEIGHT - 1; y++) {
+    walls.push({x: 0, y}, {x: GRID_WIDTH - 1, y});
+  }
+}
+
+function drawCell(x, y, color, glow = false) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+  if (glow) {
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 10;
+    ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawHypnoticSnake(segment, index) {
+  const cellX = segment.x * CELL_SIZE;
+  const cellY = segment.y * CELL_SIZE;
+  
+  const gradient = ctx.createRadialGradient(
+    cellX + CELL_SIZE / 2, cellY + CELL_SIZE / 2, 0,
+    cellX + CELL_SIZE / 2, cellY + CELL_SIZE / 2, CELL_SIZE
+  );
+  
+  const hue = (index * 10 + time * 5) % 360;
+  const saturation = Math.sin(time * 0.1 + index * 0.5) * 50 + 50;
+  const lightness = Math.sin(time * 0.2 + index * 0.3) * 25 + 50;
+  
+  gradient.addColorStop(0, `hsl(${hue}, ${saturation}%, ${lightness}%)`);
+  gradient.addColorStop(1, `hsl(${(hue + 180) % 360}, ${saturation}%, ${lightness / 2}%)`);
+  
+  ctx.fillStyle = gradient;
+  ctx.fillRect(cellX, cellY, CELL_SIZE, CELL_SIZE);
+  
+  if (index === 0) {
+    ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+    ctx.shadowBlur = 10;
+    ctx.fillRect(cellX, cellY, CELL_SIZE, CELL_SIZE);
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawGame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (isLoading) {
+    drawLoadingAnimation();
+    return;
+  }
+
+  walls.forEach(wall => drawCell(wall.x, wall.y, '#555'));
+
+  snake.forEach((segment, index) => drawHypnoticSnake(segment, index));
+
+  const pulse = Math.sin(time * 0.1) * 0.5 + 0.5;
+  const foodColor = `rgba(255, 0, 0, ${0.5 + pulse * 0.5})`;
+  drawCell(food.x, food.y, foodColor, true);
+
+  particles.forEach((particle, index) => {
+    particle.update();
+    particle.draw();
+    if (particle.life <= 0) {
+      particles.splice(index, 1);
+    }
+  });
+
+  time += 0.1;
+}
+
+function drawLoadingAnimation() {
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const radius = 100;
+  
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  const snakeLength = 20;
+  const angle = (time % 100) / 100 * Math.PI * 2;
+  
+  for (let i = 0; i < snakeLength; i++) {
+    const segmentAngle = angle - i * 0.1;
+    const x = centerX + Math.cos(segmentAngle) * radius;
+    const y = centerY + Math.sin(segmentAngle) * radius;
+    
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = `hsl(${i * 10}, 100%, 50%)`;
+    ctx.fill();
+  }
+
+  const foodAngle = (angle + Math.PI) % (Math.PI * 2);
+  const foodX = centerX + Math.cos(foodAngle) * radius;
+  const foodY = centerY + Math.sin(foodAngle) * radius;
+  
+  ctx.beginPath();
+  ctx.arc(foodX, foodY, 7, 0, Math.PI * 2);
+  ctx.fillStyle = 'red';
+  ctx.fill();
+
+  time += 0.1;
+}
+
+function updateInfo() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('highScore').textContent = highScore;
+  document.getElementById('pathLength').textContent = path.length;
+  document.getElementById('moves').textContent = moves;
+}
+
+const manhattanDistance = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+
+function getValidMoves(head, direction) {
+  const moves = {
+    'up': { x: 0, y: -1 },
+    'right': { x: 1, y: 0 },
+    'down': { x: 0, y: 1 },
+    'left': { x: -1, y: 0 }
+  };
+
+  return Object.entries(moves)
+    .filter(([moveDir]) => 
+      (direction === 'up' && moveDir !== 'down') ||
+      (direction === 'right' && moveDir !== 'left') ||
+      (direction === 'down' && moveDir !== 'up') ||
+      (direction === 'left' && moveDir !== 'right')
+    )
+    .map(([moveDir, move]) => {
+      const newX = head.x + move.x;
+      const newY = head.y + move.y;
+      if (newX > 0 && newX < GRID_WIDTH - 1 && newY > 0 && newY < GRID_HEIGHT - 1) {
+        return { x: newX, y: newY, direction: moveDir };
+      }
+      return null;
+    })
+    .filter(Boolean);
+}
+
+function getNeighbors(node, snakeBody, timeStep) {
+  const validMoves = getValidMoves(node, node.direction);
+  return validMoves.filter(move => 
+    !isCollision(move, snakeBody, timeStep) &&
+    !walls.some(wall => wall.x === move.x && wall.y === move.y)
+  );
+}
+
+function isCollision(point, snakeBody, timeStep) {
+  const futureSnake = snakeBody.slice(0, -timeStep);
+  return futureSnake.some(segment => segment.x === point.x && segment.y === point.y);
+}
+
+function reconstructPath(cameFrom, current) {
+  const totalPath = [current];
+  while (cameFrom.has(`${current.x},${current.y}`)) {
+    current = cameFrom.get(`${current.x},${current.y}`);
+    totalPath.unshift(current);
+  }
+  return totalPath;
+}
+
+function aStarSearch(start, goal, snakeBody) {
+  const openSet = new PriorityQueue();
+  openSet.enqueue({...start, direction: currentDirection}, 0);
+  
+  const cameFrom = new Map();
+  
+  const gScore = new Map();
+  gScore.set(`${start.x},${start.y}`, 0);
+  
+  const fScore = new Map();
+  fScore.set(`${start.x},${start.y}`, manhattanDistance(start, goal));
+  
+  while (!openSet.isEmpty()) {
+    const current = openSet.dequeue();
+    
+    if (current.x === goal.x && current.y === goal.y) {
+      return reconstructPath(cameFrom, current);
+    }
+    
+    const timeStep = gScore.get(`${current.x},${current.y}`);
+    for (const neighbor of getNeighbors(current, snakeBody, timeStep)) {
+      const tentativeGScore = timeStep + 1;
+      const neighborKey = `${neighbor.x},${neighbor.y}`;
+      
+      if (!gScore.has(neighborKey) || tentativeGScore < gScore.get(neighborKey)) {
+        cameFrom.set(neighborKey, current);
+        gScore.set(neighborKey, tentativeGScore);
+        const f = tentativeGScore + manhattanDistance(neighbor, goal);
+        fScore.set(neighborKey, f);
+        openSet.enqueue(neighbor, f);
+      }
+    }
+  }
+  
+""
+  
+  return null; // No path found
+}
+
+function moveSnake() {
+  let nextMove;
+  
+  if (snake.length < (GRID_WIDTH - 2) * (GRID_HEIGHT - 2) * 0.5) {
+    if (path.length === 0) {
+      path = aStarSearch(snake[0], food, snake);
+      if (!path) {
+        console.log("No path found!");
+        return false;
+      }
+      path.shift(); // Remove the starting position
+    }
+    nextMove = path.shift();
+  } else {
+    nextMove = getValidMoves(snake[0], currentDirection)[0];
+  }
+
+  if (!nextMove) {
+    console.log("No valid move!");
+    return false;
+  }
+
+  currentDirection = nextMove.direction;
+  snake.unshift({x: nextMove.x, y: nextMove.y});
+  moves++;
+
+  if (nextMove.x === food.x && nextMove.y === food.y) {
+    score++;
+    foodEaten++;
+    for (let i = 0; i < 50; i++) {
+      particles.push(new Particle(food.x * CELL_SIZE, food.y * CELL_SIZE, `hsl(${Math.random() * 360}, 100%, 50%)`));
+    }
+    createFood();
+    path = []; // Recalculate path to new food
+  } else {
+    snake.pop();
+  }
+
+  updateInfo();
+  return true;
+}
+
+function explodeSnake() {
+  for (let segment of snake) {
+    for (let i = 0; i < 20; i++) {
+      particles.push(new Particle(segment.x * CELL_SIZE, segment.y * CELL_SIZE, `hsl(${Math.random() * 360}, 100%, 50%)`));
+    }
+  }
+}
+
+function calculateGameMetrics() {
+  const percentageOfHighScore = gamesPlayed > 1 ? (score / (latestHighScore || 1)) * 100 : 0;
+  const movesPerFood = foodEaten > 0 ? moves / foodEaten : moves;
+  const snakeLengthRatio = snake.length / ((GRID_WIDTH - 2) * (GRID_HEIGHT - 2));
+
+  return {
+    percentageOfHighScore: percentageOfHighScore.toFixed(2),
+    movesPerFood: movesPerFood.toFixed(2),
+    snakeLengthRatio: snakeLengthRatio.toFixed(2)
+  };
+}
+
+async function getSerpentronMessage(isGameStart = false, isGameOver = false) {
+  const messageElement = document.getElementById('aiMessage');
+
+  const metrics = calculateGameMetrics();
+
+  try {
+    const response = await fetch('/api/getMessage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        score,
+        highScore,
+        latestHighScore,
+        isGameOver,
+        isGameStart,
+        gamesPlayed,
+        ...metrics
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    const data = await response.json();
+    messageElement.textContent = data.message;
+    messageElement.classList.add('show');
+  } catch (error) {
+    console.error('Error:', error);
+    messageElement.textContent = 'Oops! My circuits are a bit tangled...';
+    messageElement.classList.add('show');
+  }
+}
+
+function gameLoop(timestamp) {
+  if (moveSnake()) {
+    drawGame();
+    
+    // Check if 30 seconds have passed since the last message
+    if (timestamp - lastMessageTime >= 30000) {
+      getSerpentronMessage();
+      lastMessageTime = timestamp;
+    }
+    
+    requestAnimationFrame(gameLoop);
+  } else {
+    console.log(`Game Over! Serpentron's score: ${score}`);
+    explodeSnake();
+    if (score > highScore) {
+      latestHighScore = highScore;
+      highScore = score;
+    }
+    getSerpentronMessage(false, true);
+    let explosionInterval = setInterval(() => {
+      drawGame();
+      if (particles.length === 0) {
+        clearInterval(explosionInterval);
+        initSnake().then(() => requestAnimationFrame(gameLoop));
+      }
+    }, 20);
+  }
+}
+
+initSnake().then(() => requestAnimationFrame(gameLoop));
+</script></body></html>

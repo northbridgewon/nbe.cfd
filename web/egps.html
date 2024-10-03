@@ -1,0 +1,345 @@
+<html><head><base href="https://websim.ai" /><title>Enhanced Gravity Physics Simulator</title><style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #0f0f23;
+    color: #cccccc;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    color: #00cc00;
+    text-shadow: 0 0 5px #00cc00;
+  }
+  canvas {
+    border: 1px solid #00cc00;
+    box-shadow: 0 0 10px #00cc00;
+    max-width: 100%;
+    height: auto;
+  }
+  .controls {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+  }
+  .slider-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  button, input {
+    background-color: #003300;
+    color: #00cc00;
+    border: 1px solid #00cc00;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  button:hover, input:hover {
+    background-color: #004400;
+    box-shadow: 0 0 5px #00cc00;
+  }
+  #info {
+    margin-top: 20px;
+    text-align: center;
+  }
+  .active {
+    background-color: #006600;
+  }
+</style></head><body>
+  <h1>Enhanced Gravity Physics Simulator</h1>
+  <canvas id="simulationCanvas" width="1200" height="800"></canvas>
+  <div class="controls">
+    <button id="addPlanet">Add Planet</button>
+    <button id="reset">Reset</button>
+    <button id="toggleWalls">Toggle Walls</button>
+    <button id="toggleFixedPoint">Toggle Fixed Point</button>
+    <div class="slider-container">
+      <input type="range" id="gravityStrength" min="0" max="200" value="100">
+      <span>Gravity: <span id="gravityValue">100</span></span>
+    </div>
+    <div class="slider-container">
+      <input type="range" id="bounciness" min="0" max="100" value="50">
+      <span>Bounciness: <span id="bouncinessValue">50</span>%</span>
+    </div>
+    <div class="slider-container">
+      <input type="range" id="fixedPointScale" min="1000" max="20000" value="5000">
+      <span>Fixed Point Mass: <span id="fixedPointValue">5000</span></span>
+    </div>
+    <div class="slider-container">
+      <input type="range" id="simulationSpeed" min="10" max="100" value="90">
+      <span>Simulation Speed: <span id="speedValue">90</span>%</span>
+    </div>
+  </div>
+  <p id="info">Click and drag to launch planets. Right-click to place planets in circular orbit. Adjust gravity, bounciness, fixed point mass, and simulation speed!</p>
+
+  <script>
+    const canvas = document.getElementById('simulationCanvas');
+    const ctx = canvas.getContext('2d');
+    const addPlanetBtn = document.getElementById('addPlanet');
+    const resetBtn = document.getElementById('reset');
+    const toggleWallsBtn = document.getElementById('toggleWalls');
+    const toggleFixedPointBtn = document.getElementById('toggleFixedPoint');
+    const gravitySlider = document.getElementById('gravityStrength');
+    const gravityValue = document.getElementById('gravityValue');
+    const bouncinessSlider = document.getElementById('bounciness');
+    const bouncinessValue = document.getElementById('bouncinessValue');
+    const fixedPointSlider = document.getElementById('fixedPointScale');
+    const fixedPointValue = document.getElementById('fixedPointValue');
+    const simulationSpeedSlider = document.getElementById('simulationSpeed');
+    const speedValue = document.getElementById('speedValue');
+
+    let planets = [];
+    let dragStart = null;
+    let dragging = false;
+    let wallsEnabled = true;
+    let fixedPointEnabled = false;
+    const fixedPoint = { x: canvas.width / 2, y: canvas.height / 2, mass: 5000 };
+    let simulationSpeed = 0.9;
+
+    class Planet {
+      constructor(x, y, radius, mass) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.mass = mass;
+        this.vx = 0;
+        this.vy = 0;
+        this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        this.offscreen = false;
+      }
+
+      draw() {
+        if (!this.offscreen) {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+          ctx.fillStyle = this.color;
+          ctx.fill();
+        }
+      }
+
+      update() {
+        this.x += this.vx * simulationSpeed;
+        this.y += this.vy * simulationSpeed;
+
+        const bounceFactor = parseFloat(bouncinessSlider.value) / 100;
+
+        if (wallsEnabled) {
+          if (this.x - this.radius < 0 || this.x + this.radius > canvas.width) {
+            this.vx *= -bounceFactor;
+          }
+          if (this.y - this.radius < 0 || this.y + this.radius > canvas.height) {
+            this.vy *= -bounceFactor;
+          }
+
+          this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
+          this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
+          this.offscreen = false;
+        } else {
+          this.offscreen = (this.x + this.radius < 0 || this.x - this.radius > canvas.width ||
+                            this.y + this.radius < 0 || this.y - this.radius > canvas.height);
+
+          if (this.x + this.radius < 0) this.x = canvas.width + this.radius;
+          if (this.x - this.radius > canvas.width) this.x = -this.radius;
+          if (this.y + this.radius < 0) this.y = canvas.height + this.radius;
+          if (this.y - this.radius > canvas.height) this.y = -this.radius;
+        }
+      }
+    }
+
+    function addPlanet(x, y, vx, vy) {
+      const radius = Math.random() * 30 + 15;
+      const mass = radius * 10;
+      const planet = new Planet(x, y, radius, mass);
+      planet.vx = vx;
+      planet.vy = vy;
+      planets.push(planet);
+    }
+
+    function addPlanetInCircularOrbit(x, y) {
+      const radius = Math.random() * 30 + 15;
+      const mass = radius * 10;
+      const planet = new Planet(x, y, radius, mass);
+      
+      if (fixedPointEnabled) {
+        const dx = x - fixedPoint.x;
+        const dy = y - fixedPoint.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const orbitSpeed = Math.sqrt((gravitySlider.value / 100) * fixedPoint.mass / distance);
+        
+        planet.vx = -dy / distance * orbitSpeed;
+        planet.vy = dx / distance * orbitSpeed;
+      } else {
+        planet.vx = 0;
+        planet.vy = 0;
+      }
+      
+      planets.push(planet);
+    }
+
+    function calculateGravity(p1, p2) {
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const force = (gravitySlider.value / 100) * (p1.mass * p2.mass) / (distance * distance);
+      const angle = Math.atan2(dy, dx);
+      return {
+        fx: Math.cos(angle) * force,
+        fy: Math.sin(angle) * force
+      };
+    }
+
+    function handleCollision(p1, p2) {
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < p1.radius + p2.radius) {
+        const nx = dx / distance;
+        const ny = dy / distance;
+        const vx = p2.vx - p1.vx;
+        const vy = p2.vy - p1.vy;
+        const vnormal = vx * nx + vy * ny;
+        if (vnormal > 0) return;
+        const restitution = parseFloat(bouncinessSlider.value) / 100;
+        const impulse = -(1 + restitution) * vnormal / (1 / p1.mass + 1 / p2.mass);
+        p1.vx -= (impulse * nx) / p1.mass * simulationSpeed;
+        p1.vy -= (impulse * ny) / p1.mass * simulationSpeed;
+        p2.vx += (impulse * nx) / p2.mass * simulationSpeed;
+        p2.vy += (impulse * ny) / p2.mass * simulationSpeed;
+        const overlap = (p1.radius + p2.radius - distance) / 2;
+        p1.x -= overlap * nx;
+        p1.y -= overlap * ny;
+        p2.x += overlap * nx;
+        p2.y += overlap * ny;
+      }
+    }
+
+    function update() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (fixedPointEnabled) {
+        const fixedPointRadius = Math.sqrt(fixedPoint.mass / Math.PI) / 4;
+        ctx.beginPath();
+        ctx.arc(fixedPoint.x, fixedPoint.y, fixedPointRadius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      }
+
+      for (let i = 0; i < planets.length; i++) {
+        let totalFx = 0;
+        let totalFy = 0;
+
+        for (let j = 0; j < planets.length; j++) {
+          if (i !== j) {
+            const force = calculateGravity(planets[i], planets[j]);
+            totalFx += force.fx;
+            totalFy += force.fy;
+            handleCollision(planets[i], planets[j]);
+          }
+        }
+
+        if (fixedPointEnabled) {
+          const force = calculateGravity(planets[i], fixedPoint);
+          totalFx += force.fx;
+          totalFy += force.fy;
+        }
+
+        planets[i].vx += totalFx / planets[i].mass * simulationSpeed;
+        planets[i].vy += totalFy / planets[i].mass * simulationSpeed;
+        planets[i].update();
+        planets[i].draw();
+      }
+
+      if (dragging) {
+        ctx.beginPath();
+        ctx.moveTo(dragStart.x, dragStart.y);
+        ctx.lineTo(dragStart.x + (dragStart.x - mousePos.x), dragStart.y + (dragStart.y - mousePos.y));
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+        ctx.stroke();
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 0) { // Left click
+        dragStart = getMousePos(canvas, e);
+        dragging = true;
+      } else if (e.button === 2) { // Right click
+        const pos = getMousePos(canvas, e);
+        addPlanetInCircularOrbit(pos.x, pos.y);
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      mousePos = getMousePos(canvas, e);
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      if (e.button === 0 && dragging) {
+        const mousePos = getMousePos(canvas, e);
+        const vx = (dragStart.x - mousePos.x) / 20;
+        const vy = (dragStart.y - mousePos.y) / 20;
+        addPlanet(dragStart.x, dragStart.y, vx, vy);
+        dragging = false;
+      }
+    });
+
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
+
+    function getMousePos(canvas, evt) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (evt.clientX - rect.left) * (canvas.width / rect.width),
+        y: (evt.clientY - rect.top) * (canvas.height / rect.height)
+      };
+    }
+
+    addPlanetBtn.addEventListener('click', () => {
+      addPlanet(Math.random() * canvas.width, Math.random() * canvas.height, 0, 0);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      planets = [];
+    });
+
+    toggleWallsBtn.addEventListener('click', () => {
+      wallsEnabled = !wallsEnabled;
+      toggleWallsBtn.classList.toggle('active');
+      toggleWallsBtn.textContent = wallsEnabled ? 'Disable Walls' : 'Enable Walls';
+    });
+
+    toggleFixedPointBtn.addEventListener('click', () => {
+      fixedPointEnabled = !fixedPointEnabled;
+      toggleFixedPointBtn.classList.toggle('active');
+      toggleFixedPointBtn.textContent = fixedPointEnabled ? 'Disable Fixed Point' : 'Enable Fixed Point';
+    });
+
+    gravitySlider.addEventListener('input', () => {
+      gravityValue.textContent = gravitySlider.value;
+    });
+
+    bouncinessSlider.addEventListener('input', () => {
+      bouncinessValue.textContent = bouncinessSlider.value;
+    });
+
+    fixedPointSlider.addEventListener('input', () => {
+      fixedPoint.mass = parseInt(fixedPointSlider.value);
+      fixedPointValue.textContent = fixedPointSlider.value;
+    });
+
+    simulationSpeedSlider.addEventListener('input', () => {
+      simulationSpeed = parseInt(simulationSpeedSlider.value) / 100;
+      speedValue.textContent = simulationSpeedSlider.value;
+    });
+
+    update();
+  </script>
+</body></html>

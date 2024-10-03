@@ -1,0 +1,146 @@
+<html><head><base href="https://websim.ai/"><title>Chrono Spectacle - The Ultimate Full Screen Clock Experience</title><style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        font-family: 'Roboto Mono', monospace;
+        background-color: #000;
+        color: #fff;
+    }
+    #clock-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    #time {
+        font-size: 15vw;
+        font-weight: bold;
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        z-index: 10;
+    }
+    #date {
+        position: absolute;
+        bottom: 20px;
+        font-size: 3vw;
+        opacity: 0.7;
+    }
+    .particle {
+        position: absolute;
+        background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    #binary-rain {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.1;
+        z-index: 5;
+    }
+</style></head><body>
+<div id="clock-container">
+    <div id="time"></div>
+    <div id="date"></div>
+    <canvas id="binary-rain"></canvas>
+</div>
+
+<script>
+    function updateClock() {
+        const now = new Date();
+        const timeElement = document.getElementById('time');
+        const dateElement = document.getElementById('date');
+        
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        
+        timeElement.textContent = `${hours}:${minutes}:${seconds}`;
+        dateElement.textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        
+        // Change color every second
+        const hue = (now.getSeconds() / 60) * 360;
+        document.body.style.backgroundColor = `hsl(${hue}, 70%, 5%)`;
+        timeElement.style.color = `hsl(${hue}, 100%, 80%)`;
+    }
+
+    function createParticle() {
+        const particle = document.createElement('div');
+        particle.classList.add('particle');
+        const size = Math.random() * 5 + 2;
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        particle.style.left = `${Math.random() * 100}vw`;
+        particle.style.top = `${Math.random() * 100}vh`;
+        document.body.appendChild(particle);
+
+        const animation = particle.animate([
+            { transform: 'translate(0, 0)', opacity: 1 },
+            { transform: `translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px)`, opacity: 0 }
+        ], {
+            duration: Math.random() * 3000 + 2000,
+            easing: 'cubic-bezier(0.4, 0.0, 0.2, 1)',
+        });
+
+        animation.onfinish = () => {
+            particle.remove();
+            createParticle();
+        };
+    }
+
+    function setupBinaryRain() {
+        const canvas = document.getElementById('binary-rain');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const columns = canvas.width / 20;
+        const drops = [];
+
+        for (let i = 0; i < columns; i++) {
+            drops[i] = 1;
+        }
+
+        function draw() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#0f0';
+            ctx.font = '15px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = Math.random() > 0.5 ? '1' : '0';
+                ctx.fillText(text, i * 20, drops[i] * 20);
+
+                if (drops[i] * 20 > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+
+        setInterval(draw, 33);
+    }
+
+    // Initialize
+    updateClock();
+    setInterval(updateClock, 1000);
+    for (let i = 0; i < 50; i++) {
+        createParticle();
+    }
+    setupBinaryRain();
+
+    // Resize handling
+    window.addEventListener('resize', () => {
+        const canvas = document.getElementById('binary-rain');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+</script>
+</body></html>

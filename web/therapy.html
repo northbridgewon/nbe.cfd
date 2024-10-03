@@ -1,0 +1,421 @@
+<html><head><base href="https://websim.ai/" /><title>ELIZA - Classic Therapeutic Chatbot</title><style>
+  body {
+    font-family: 'Courier New', monospace;
+    background-color: #000;
+    color: #00ff00;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+  .chat-container {
+    width: 600px;
+    height: 400px;
+    background-color: #111;
+    border: 2px solid #00ff00;
+    display: flex;
+    flex-direction: column;
+  }
+  .chat-header {
+    background-color: #222;
+    color: #00ff00;
+    padding: 10px;
+    text-align: center;
+    font-weight: bold;
+  }
+  .chat-messages {
+    flex-grow: 1;
+    padding: 10px;
+    overflow-y: auto;
+  }
+  .message {
+    margin-bottom: 10px;
+  }
+  .user-message {
+    color: #ffffff;
+  }
+  .bot-message {
+    color: #00ff00;
+  }
+  .chat-input {
+    display: flex;
+    padding: 10px;
+  }
+  #user-input {
+    flex-grow: 1;
+    background-color: #222;
+    color: #ffffff;
+    border: 1px solid #00ff00;
+    padding: 5px;
+  }
+  #send-button {
+    background-color: #00ff00;
+    color: #000;
+    border: none;
+    padding: 5px 10px;
+    margin-left: 5px;
+    cursor: pointer;
+  }
+</style></head><body>
+<div class="chat-container">
+  <div class="chat-header">
+    ELIZA - Classic Therapeutic Chatbot
+  </div>
+  <div class="chat-messages" id="chat-messages"></div>
+  <div class="chat-input">
+    <input type="text" id="user-input" placeholder="Type your message...">
+    <button id="send-button">Send</button>
+  </div>
+</div>
+
+<script>
+const chatMessages = document.getElementById('chat-messages');
+const userInput = document.getElementById('user-input');
+const sendButton = document.getElementById('send-button');
+
+const elizaPatterns = [
+  {
+    pattern: /hello|hi|hey/i,
+    responses: ["How do you do. Please state your problem."]
+  },
+  {
+    pattern: /I need (.*)/i,
+    responses: [
+      "Why do you need $1?",
+      "Would it really help you to get $1?",
+      "Are you sure you need $1?"
+    ]
+  },
+  {
+    pattern: /Why don't you (.*)/i,
+    responses: [
+      "Do you really think I don't $1?",
+      "Perhaps eventually I will $1.",
+      "Do you really want me to $1?"
+    ]
+  },
+  {
+    pattern: /Why can't I (.*)/i,
+    responses: [
+      "Do you think you should be able to $1?",
+      "If you could $1, what would you do?",
+      "I don't know -- why can't you $1?",
+      "Have you really tried?"
+    ]
+  },
+  {
+    pattern: /I can't (.*)/i,
+    responses: [
+      "How do you know you can't $1?",
+      "Perhaps you could $1 if you tried.",
+      "What would it take for you to $1?"
+    ]
+  },
+  {
+    pattern: /I am (.*)/i,
+    responses: [
+      "Did you come to me because you are $1?",
+      "How long have you been $1?",
+      "How do you feel about being $1?"
+    ]
+  },
+  {
+    pattern: /I'm (.*)/i,
+    responses: [
+      "How does being $1 make you feel?",
+      "Do you enjoy being $1?",
+      "Why do you tell me you're $1?",
+      "How long have you been $1?"
+    ]
+  },
+  {
+    pattern: /Are you (.*)/i,
+    responses: [
+      "Why does it matter whether I am $1?",
+      "Would you prefer it if I weren't $1?",
+      "Perhaps you believe I am $1.",
+      "I may be $1 -- what do you think?"
+    ]
+  },
+  {
+    pattern: /What (.*)/i,
+    responses: [
+      "Why do you ask?",
+      "How would an answer to that help you?",
+      "What do you think?"
+    ]
+  },
+  {
+    pattern: /How (.*)/i,
+    responses: [
+      "How do you suppose?",
+      "Perhaps you can answer your own question.",
+      "What is it you're really asking?"
+    ]
+  },
+  {
+    pattern: /Because (.*)/i,
+    responses: [
+      "Is that the real reason?",
+      "What other reasons come to mind?",
+      "Does that reason apply to anything else?",
+      "If $1, what else must be true?"
+    ]
+  },
+  {
+    pattern: /(.*) sorry (.*)/i,
+    responses: [
+      "There are many times when no apology is needed.",
+      "What feelings do you have when you apologize?"
+    ]
+  },
+  {
+    pattern: /Hello (.*)/i,
+    responses: [
+      "Hello... I'm glad you could drop by today.",
+      "Hi there... how are you today?",
+      "Hello, how are you feeling today?"
+    ]
+  },
+  {
+    pattern: /I think (.*)/i,
+    responses: [
+      "Do you doubt $1?",
+      "Do you really think so?",
+      "But you're not sure $1?"
+    ]
+  },
+  {
+    pattern: /Friend (.*)/i,
+    responses: [
+      "Tell me more about your friends.",
+      "When you think of a friend, what comes to mind?",
+      "Why don't you tell me about a childhood friend?"
+    ]
+  },
+  {
+    pattern: /Yes/i,
+    responses: [
+      "You seem quite sure.",
+      "OK, but can you elaborate a bit?"
+    ]
+  },
+  {
+    pattern: /Computer (.*)/i,
+    responses: [
+      "Are you really talking about me?",
+      "Does it seem strange to talk to a computer?",
+      "How do computers make you feel?",
+      "Do you feel threatened by computers?"
+    ]
+  },
+  {
+    pattern: /Is it (.*)/i,
+    responses: [
+      "Do you think it is $1?",
+      "Perhaps it's $1 -- what do you think?",
+      "If it were $1, what would you do?",
+      "It could well be that $1."
+    ]
+  },
+  {
+    pattern: /It is (.*)/i,
+    responses: [
+      "You seem very certain.",
+      "If I told you that it probably isn't $1, what would you feel?"
+    ]
+  },
+  {
+    pattern: /Can you (.*)/i,
+    responses: [
+      "What makes you think I can't $1?",
+      "If I could $1, then what?",
+      "Why do you ask if I can $1?"
+    ]
+  },
+  {
+    pattern: /Can I (.*)/i,
+    responses: [
+      "Perhaps you don't want to $1.",
+      "Do you want to be able to $1?",
+      "If you could $1, would you?"
+    ]
+  },
+  {
+    pattern: /You are (.*)/i,
+    responses: [
+      "Why do you think I am $1?",
+      "Does it please you to think that I'm $1?",
+      "Perhaps you would like me to be $1.",
+      "Perhaps you're really talking about yourself?"
+    ]
+  },
+  {
+    pattern: /You're (.*)/i,
+    responses: [
+      "Why do you say I am $1?",
+      "Why do you think I am $1?",
+      "Are we talking about you, or me?"
+    ]
+  },
+  {
+    pattern: /I don't (.*)/i,
+    responses: [
+      "Don't you really $1?",
+      "Why don't you $1?",
+      "Do you want to $1?"
+    ]
+  },
+  {
+    pattern: /I feel (.*)/i,
+    responses: [
+      "Good, tell me more about these feelings.",
+      "Do you often feel $1?",
+      "When do you usually feel $1?",
+      "When you feel $1, what do you do?"
+    ]
+  },
+  {
+    pattern: /I have (.*)/i,
+    responses: [
+      "Why do you tell me that you've $1?",
+      "Have you really $1?",
+      "Now that you have $1, what will you do next?"
+    ]
+  },
+  {
+    pattern: /I would (.*)/i,
+    responses: [
+      "Could you explain why you would $1?",
+      "Why would you $1?",
+      "Who else knows that you would $1?"
+    ]
+  },
+  {
+    pattern: /Is there (.*)/i,
+    responses: [
+      "Do you think there is $1?",
+      "It's likely that there is $1.",
+      "Would you like there to be $1?"
+    ]
+  },
+  {
+    pattern: /My (.*)/i,
+    responses: [
+      "I see, your $1.",
+      "Why do you say that your $1?",
+      "When your $1, how do you feel?"
+    ]
+  },
+  {
+    pattern: /You (.*)/i,
+    responses: [
+      "We should be discussing you, not me.",
+      "Why do you say that about me?",
+      "Why do you care whether I $1?"
+    ]
+  },
+  {
+    pattern: /Why (.*)/i,
+    responses: [
+      "Why don't you tell me the reason why $1?",
+      "Why do you think $1?"
+    ]
+  },
+  {
+    pattern: /I want (.*)/i,
+    responses: [
+      "What would it mean to you if you got $1?",
+      "Why do you want $1?",
+      "What would you do if you got $1?",
+      "If you got $1, then what would you do?"
+    ]
+  },
+  {
+    pattern: /(.*) mother(.*)/i,
+    responses: [
+      "Tell me more about your mother.",
+      "What was your relationship with your mother like?",
+      "How do you feel about your mother?",
+      "How does this relate to your feelings today?",
+      "Good family relations are important."
+    ]
+  },
+  {
+    pattern: /(.*) father(.*)/i,
+    responses: [
+      "Tell me more about your father.",
+      "How did your father make you feel?",
+      "How do you feel about your father?",
+      "Does your relationship with your father relate to your feelings today?",
+      "Do you have trouble showing affection with your family?"
+    ]
+  },
+  {
+    pattern: /(.*) child(.*)/i,
+    responses: [
+      "Did you have close friends as a child?",
+      "What is your favorite childhood memory?",
+      "Do you remember any dreams or nightmares from childhood?",
+      "Did the other children sometimes tease you?",
+      "How do you think your childhood experiences relate to your feelings today?"
+    ]
+  },
+  {
+    pattern: /(.*)\?/i,
+    responses: [
+      "Why do you ask that?",
+      "Please consider whether you can answer your own question.",
+      "Perhaps the answer lies within yourself?",
+      "Why don't you tell me?"
+    ]
+  }
+];
+
+function elizaResponse(input) {
+  for (let i = 0; i < elizaPatterns.length; i++) {
+    const match = input.match(elizaPatterns[i].pattern);
+    if (match) {
+      const response = elizaPatterns[i].responses[Math.floor(Math.random() * elizaPatterns[i].responses.length)];
+      return response.replace('$1', match[1]);
+    }
+  }
+  return "I'm not sure I understand you fully. Can you rephrase that?";
+}
+
+function addMessage(message, isUser) {
+  const messageElement = document.createElement('div');
+  messageElement.classList.add('message');
+  messageElement.classList.add(isUser ? 'user-message' : 'bot-message');
+  messageElement.textContent = isUser ? 'You: ' + message : 'ELIZA: ' + message;
+  chatMessages.appendChild(messageElement);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function handleUserInput() {
+  const userMessage = userInput.value.trim();
+  if (userMessage) {
+    addMessage(userMessage, true);
+    userInput.value = '';
+    
+    setTimeout(() => {
+      const botResponse = elizaResponse(userMessage);
+      addMessage(botResponse, false);
+    }, 500 + Math.random() * 1000);
+  }
+}
+
+sendButton.addEventListener('click', handleUserInput);
+userInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    handleUserInput();
+  }
+});
+
+// Initial greeting
+setTimeout(() => {
+  addMessage("Hello. How are you feeling today?", false);
+}, 1000);
+</script>
+</body></html>

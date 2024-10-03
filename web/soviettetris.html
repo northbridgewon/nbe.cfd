@@ -1,0 +1,456 @@
+<html><head><base href="http://tetris-in-the-browser.com/"><title>Soviet Tetris</title>
+<style>
+  body {
+    background-color: #8B0000; /* Dark red */
+    color: #FFD700; /* Gold */
+    font-family: 'Roboto Slab', serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-image: url('soviet-pattern.png');
+    background-repeat: repeat;
+    position: relative;
+    overflow: hidden;
+  }
+  #game-container {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    z-index: 1;
+  }
+  #game-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #tetris-board {
+    width: 300px;
+    height: 600px;
+    border: 4px solid #FFD700;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(20, 1fr);
+    position: relative;
+  }
+  .cell {
+    border: 1px solid #8B0000;
+  }
+  .piece {
+    border: 1px solid rgba(255, 215, 0, 0.3);
+  }
+  #social-credit, #level, #lines {
+    margin-top: 10px;
+    font-size: 20px;
+    text-align: center;
+  }
+  #next-piece {
+    width: 120px;
+    height: 120px;
+    border: 2px solid #FFD700;
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+  }
+  h1 {
+    font-size: 36px;
+    margin-bottom: 20px;
+    text-align: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+  .soviet-symbol {
+    font-size: 48px;
+    margin: 10px 0;
+  }
+  #pause-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    color: #FFD700;
+  }
+  #start-pause-btn {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 18px;
+    background-color: #FFD700;
+    color: #8B0000;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  #start-pause-btn:hover {
+    background-color: #FFA500;
+  }
+  #side-panel {
+    display: flex;
+    flex-direction: column;
+    margin-left: 40px;
+  }
+  #controls {
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 250px;
+  }
+  #controls h2 {
+    color: #FFD700;
+    font-size: 24px;
+    margin-bottom: 15px;
+  }
+  #controls ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  #controls li {
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .key {
+    background-color: #FFD700;
+    color: #8B0000;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+  }
+  #social-credit-status {
+    margin-top: 10px;
+    font-size: 18px;
+    font-weight: bold;
+  }
+  .hammer-sickle {
+    position: absolute;
+    color: rgba(255, 215, 0, 0.2);
+    user-select: none;
+    z-index: 0;
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <div id="game-area">
+    <h1>Soviet Tetris</h1>
+    <div class="soviet-symbol">☭</div>
+    <div id="tetris-board">
+      <div id="pause-overlay">Game Paused</div>
+    </div>
+    <div id="social-credit">Social Credit: 1000</div>
+    <div id="social-credit-status">Status: Comrade</div>
+    <div id="level">Level: 1</div>
+    <div id="lines">Lines: 0</div>
+    <button id="start-pause-btn">Start Game</button>
+  </div>
+  <div id="side-panel">
+    <div id="controls">
+      <h2>Game Controls</h2>
+      <ul>
+        <li><span class="key">←</span> Move Left</li>
+        <li><span class="key">→</span> Move Right</li>
+        <li><span class="key">↓</span> Move Down</li>
+        <li><span class="key">↑</span> Rotate Piece</li>
+        <li><span class="key">P</span> Pause/Resume</li>
+      </ul>
+    </div>
+    <div id="next-piece"></div>
+  </div>
+</div>
+
+<script>
+const board = document.getElementById('tetris-board');
+const socialCreditElement = document.getElementById('social-credit');
+const socialCreditStatusElement = document.getElementById('social-credit-status');
+const levelElement = document.getElementById('level');
+const linesElement = document.getElementById('lines');
+const nextPieceDisplay = document.getElementById('next-piece');
+const startPauseBtn = document.getElementById('start-pause-btn');
+const pauseOverlay = document.getElementById('pause-overlay');
+
+const BOARD_WIDTH = 10;
+const BOARD_HEIGHT = 20;
+let socialCredit = 1000;
+let level = 1;
+let lines = 0;
+let currentPiece;
+let nextPiece;
+let gameBoard;
+let gameLoop;
+let isPaused = true;
+
+const PIECES = [
+  [[1, 1, 1, 1]], // I
+  [[1, 1], [1, 1]], // O
+  [[1, 1, 1], [0, 1, 0]], // T
+  [[1, 1, 1], [1, 0, 0]], // L
+  [[1, 1, 1], [0, 0, 1]], // J
+  [[1, 1, 0], [0, 1, 1]], // S
+  [[0, 1, 1], [1, 1, 0]]  // Z
+];
+
+const COLORS = ['#FF0000', '#FFFF00', '#00FF00', '#00FFFF', '#0000FF', '#FF00FF', '#FFA500'];
+
+function initBoard() {
+  gameBoard = Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0));
+  board.innerHTML = '';
+  for (let y = 0; y < BOARD_HEIGHT; y++) {
+    for (let x = 0; x < BOARD_WIDTH; x++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.id = `cell-${y}-${x}`;
+      board.appendChild(cell);
+    }
+  }
+  board.appendChild(pauseOverlay);
+}
+
+function drawBoard() {
+  for (let y = 0; y < BOARD_HEIGHT; y++) {
+    for (let x = 0; x < BOARD_WIDTH; x++) {
+      const cell = document.getElementById(`cell-${y}-${x}`);
+      cell.style.backgroundColor = gameBoard[y][x] ? COLORS[gameBoard[y][x] - 1] : 'transparent';
+    }
+  }
+}
+
+function createPiece() {
+  const pieceIndex = Math.floor(Math.random() * PIECES.length);
+  const piece = PIECES[pieceIndex];
+  return {
+    shape: piece,
+    color: pieceIndex + 1,
+    x: Math.floor(BOARD_WIDTH / 2) - Math.floor(piece[0].length / 2),
+    y: 0
+  };
+}
+
+function drawPiece(piece) {
+  piece.shape.forEach((row, y) => {
+    row.forEach((value, x) => {
+      if (value) {
+        const cellX = piece.x + x;
+        const cellY = piece.y + y;
+        if (cellY >= 0) {
+          const cell = document.getElementById(`cell-${cellY}-${cellX}`);
+          if (cell) cell.style.backgroundColor = COLORS[piece.color - 1];
+        }
+      }
+    });
+  });
+}
+
+function canMove(piece, dx, dy) {
+  return piece.shape.every((row, y) => 
+    row.every((value, x) => 
+      !value || 
+      (piece.x + x + dx >= 0 && 
+       piece.x + x + dx < BOARD_WIDTH && 
+       piece.y + y + dy < BOARD_HEIGHT &&
+       !gameBoard[piece.y + y + dy]?.[piece.x + x + dx])
+    )
+  );
+}
+
+function movePiece(dx, dy) {
+  if (canMove(currentPiece, dx, dy)) {
+    currentPiece.x += dx;
+    currentPiece.y += dy;
+    drawBoard();
+    drawPiece(currentPiece);
+    return true;
+  }
+  return false;
+}
+
+function rotatePiece() {
+  const rotated = currentPiece.shape[0].map((_, i) => 
+    currentPiece.shape.map(row => row[i]).reverse()
+  );
+  const previousShape = currentPiece.shape;
+  currentPiece.shape = rotated;
+  if (!canMove(currentPiece, 0, 0)) {
+    currentPiece.shape = previousShape;
+    return;
+  }
+  drawBoard();
+  drawPiece(currentPiece);
+}
+
+function mergePiece() {
+  currentPiece.shape.forEach((row, y) => {
+    row.forEach((value, x) => {
+      if (value) {
+        gameBoard[currentPiece.y + y][currentPiece.x + x] = currentPiece.color;
+      }
+    });
+  });
+}
+
+function checkLines() {
+  let linesCleared = 0;
+  for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
+    if (gameBoard[y].every(cell => cell !== 0)) {
+      gameBoard.splice(y, 1);
+      gameBoard.unshift(Array(BOARD_WIDTH).fill(0));
+      linesCleared++;
+      y++;
+    }
+  }
+  if (linesCleared > 0) {
+    socialCredit += [40, 100, 300, 1200][linesCleared - 1] * level;
+    lines += linesCleared;
+    level = Math.floor(lines / 10) + 1;
+    updateSocialCredit();
+    levelElement.textContent = `Level: ${level}`;
+    linesElement.textContent = `Lines: ${lines}`;
+  }
+}
+
+function updateSocialCredit() {
+  socialCreditElement.textContent = `Social Credit: ${socialCredit}`;
+  let status = '';
+  if (socialCredit < 500) {
+    status = 'Dissident';
+  } else if (socialCredit < 1000) {
+    status = 'Citizen';
+  } else if (socialCredit < 2000) {
+    status = 'Comrade';
+  } else if (socialCredit < 5000) {
+    status = 'Party Member';
+  } else {
+    status = 'Party Leader';
+  }
+  socialCreditStatusElement.textContent = `Status: ${status}`;
+}
+
+function gameOver() {
+  alert(`Game Over, Comrade! Your final Social Credit: ${socialCredit}`);
+  isPaused = true;
+  pauseOverlay.style.display = 'flex';
+  startPauseBtn.textContent = 'Start New Game';
+}
+
+function updateNextPieceDisplay() {
+  nextPieceDisplay.innerHTML = '';
+  nextPiece.shape.forEach((row, y) => {
+    row.forEach((value, x) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.backgroundColor = value ? COLORS[nextPiece.color - 1] : 'transparent';
+      nextPieceDisplay.appendChild(cell);
+    });
+  });
+}
+
+function update() {
+  if (!movePiece(0, 1)) {
+    mergePiece();
+    checkLines();
+    currentPiece = nextPiece;
+    nextPiece = createPiece();
+    updateNextPieceDisplay();
+    if (!canMove(currentPiece, 0, 0)) {
+      gameOver();
+      return;
+    }
+  }
+  drawBoard();
+  drawPiece(currentPiece);
+}
+
+function startGameLoop() {
+  if (gameLoop) clearInterval(gameLoop);
+  gameLoop = setInterval(() => {
+    if (!isPaused) {
+      update();
+    }
+  }, Math.max(100, 500 - (level - 1) * 50));
+}
+
+function togglePause() {
+  isPaused = !isPaused;
+  if (isPaused) {
+    pauseOverlay.style.display = 'flex';
+    startPauseBtn.textContent = 'Resume Game';
+  } else {
+    pauseOverlay.style.display = 'none';
+    startPauseBtn.textContent = 'Pause Game';
+    if (!gameLoop) startGameLoop();
+  }
+}
+
+function initGame() {
+  socialCredit = 1000;
+  level = 1;
+  lines = 0;
+  isPaused = true;
+  updateSocialCredit();
+  levelElement.textContent = 'Level: 1';
+  linesElement.textContent = 'Lines: 0';
+  initBoard();
+  currentPiece = createPiece();
+  nextPiece = createPiece();
+  updateNextPieceDisplay();
+  drawBoard();
+  drawPiece(currentPiece);
+  pauseOverlay.style.display = 'flex';
+  startPauseBtn.textContent = 'Start Game';
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!isPaused) {
+    switch (e.key) {
+      case 'ArrowLeft': movePiece(-1, 0); break;
+      case 'ArrowRight': movePiece(1, 0); break;
+      case 'ArrowDown': movePiece(0, 1); break;
+      case 'ArrowUp': rotatePiece(); break;
+    }
+  }
+  if (e.key === 'p' || e.key === 'P') {
+    togglePause();
+  }
+});
+
+startPause= function() {
+  if (isPaused && startPauseBtn.textContent === 'Start New Game') {
+    initGame();
+  }
+  togglePause();
+};
+
+startPauseBtn.addEventListener('click', startPause);
+
+initGame();
+
+// Add hammer and sickle symbols to the background
+function addHammerSickle() {
+  const symbols = 50;
+  for (let i = 0; i < symbols; i++) {
+    const symbol = document.createElement('div');
+    symbol.className = 'hammer-sickle';
+    symbol.textContent = '☭';
+    symbol.style.fontSize = `${Math.random() * 30 + 20}px`;
+    symbol.style.opacity = Math.random() * 0.5 + 0.1;
+    symbol.style.left = `${Math.random() * 100}vw`;
+    symbol.style.top = `${Math.random() * 100}vh`;
+    symbol.style.transform = `rotate(${Math.random() * 360}deg)`;
+    document.body.appendChild(symbol);
+  }
+}
+
+addHammerSickle();
+</script>
+</body></html>

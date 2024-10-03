@@ -1,0 +1,392 @@
+<html><head><base href="https://websim.ai"><title>Cursor Chaos: RGB Rave</title><style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    color: #fff;
+    font-family: 'Arial', sans-serif;
+  }
+  #gameCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+  #infoPanel {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 10px;
+    border: 1px solid #fff;
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+    z-index: 10;
+  }
+  h1 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    text-shadow: 0 0 5px #fff;
+  }
+  p {
+    margin: 5px 0;
+    font-size: 18px;
+  }
+  #modeSelect {
+    margin-top: 10px;
+    padding: 5px;
+    background: #333;
+    color: #fff;
+    border: 1px solid #fff;
+  }
+</style></head><body>
+<canvas id="gameCanvas"></canvas>
+<div id="infoPanel">
+  <h1>Cursor Chaos: Definitive Edition</h1>
+  <p>Time: <span id="timeElapsed">0</span>s</p>
+  <p>Evil Cursors: <span id="cursorCount">0</span></p>
+  <p>Obstacles: <span id="obstacleCount">0</span></p>
+  <p>Sensitivity: <span id="sensitivityInfo">Normal</span></p>
+  <select id="modeSelect">
+    <option value="normal">Normal Mode</option>
+    <option value="speed">Speed Mode</option>
+    <option value="swarm">Swarm Mode</option>
+    <option value="ghost">Ghost Mode</option>
+    <option value="obstacle">Obstacle Mode</option>
+    <option value="sensitivity">Sensitivity Mode</option>
+    <option value="party">Party Mode</option>
+  </select>
+</div>
+
+<script type="module">
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const modeSelect = document.getElementById('modeSelect');
+const sensitivityInfo = document.getElementById('sensitivityInfo');
+
+let player = { x: 0, y: 0, targetX: 0, targetY: 0 };
+let evilCursors = [];
+let obstacles = [];
+let confetti = [];
+let gameTime = 0;
+let isGameOver = false;
+let lastCursorSpawnTime = 0;
+let lastObstacleSpawnTime = 0;
+let lastSensitivityChangeTime = 0;
+let currentMode = 'normal';
+let sensitivity = 1;
+let smoothness = 0.1;
+let ghostFlashInterval = 7; // Default flash interval
+let lastGhostFlashTime = 0;
+let ghostsVisible = true;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function drawCursor(x, y, color, isGhost = false) {
+  if (isGhost && currentMode === 'ghost' && !ghostsVisible) return;
+  
+  ctx.save();
+  ctx.translate(x, y);
+  
+  // Cursor shape
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(12, 4);
+  ctx.lineTo(6, 10);
+  ctx.lineTo(8, 8);
+  ctx.lineTo(4, 12);
+  ctx.lineTo(0, 0);
+  ctx.fill();
+  
+  // Cursor outline
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  
+  ctx.restore();
+}
+
+function drawObstacle(obstacle) {
+  ctx.fillStyle = obstacle.evil ? 'red' : 'blue';
+  ctx.beginPath();
+  ctx.arc(obstacle.x, obstacle.y, obstacle.radius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawConfetti(particle) {
+  ctx.fillStyle = particle.color;
+  ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+}
+
+function getSpawnInterval() {
+  switch (currentMode) {
+    case 'speed': return 5;
+    case 'swarm': return 1.5;
+    case 'ghost': return 6;
+    case 'obstacle': return 10;
+    case 'sensitivity': return 10;
+    case 'party': return 3;
+    default: return 10;
+  }
+}
+
+function spawnObstacle() {
+  const evil = Math.random() < 0.3;
+  const moving = Math.random() < 0.5;
+  obstacles.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    radius: Math.random() * 20 + 10,
+    evil: evil,
+    moving: moving,
+    vx: moving ? (Math.random() - 0.5) * 4 : 0,
+    vy: moving ? (Math.random() - 0.5) * 4 : 0
+  });
+}
+
+function changeSensitivity() {
+  sensitivity = Math.random() * 2 + 0.1; // 0.1 to 2.1
+  smoothness = Math.random() * 0.3 + 0.05; // 0.05 to 0.35
+  updateSensitivityInfo();
+}
+
+function updateSensitivityInfo() {
+  let sensText = "Normal";
+  if (sensitivity < 0.5) sensText = "Very Low";
+  else if (sensitivity < 1) sensText = "Low";
+  else if (sensitivity > 1.5) sensText = "Very High";
+  else if (sensitivity > 1) sensText = "High";
+
+  let smoothText = "Normal";
+  if (smoothness < 0.1) smoothText = "Jerky";
+  else if (smoothness < 0.15) smoothText = "Quick";
+  else if (smoothness > 0.25) smoothText = "Very Smooth";
+  else if (smoothness > 0.2) smoothText = "Smooth";
+
+  sensitivityInfo.textContent = `${sensText} / ${smoothText}`;
+}
+
+function spawnConfetti() {
+  for (let i = 0; i < 5; i++) {
+    confetti.push({
+      x: Math.random() * canvas.width,
+      y: -20,
+      size: Math.random() * 5 + 5,
+      color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+      speed: Math.random() * 2 + 1
+    });
+  }
+}
+
+function getEvilCursorColor() {
+  switch (currentMode) {
+    case 'speed': return 'orange';
+    case 'swarm': return 'yellow';
+    case 'ghost': return 'gray';
+    case 'obstacle': return 'blue';
+    case 'sensitivity': return `hsl(${Math.random() * 360}, 100%, 50%)`;
+    case 'party': return `hsl(${Math.random() * 360}, 100%, 50%)`;
+    default: return 'red';
+  }
+}
+
+function updateGame() {
+  gameTime += 1/60;
+  
+  const spawnInterval = getSpawnInterval();
+  if (gameTime - lastCursorSpawnTime >= spawnInterval) {
+    evilCursors.push({ 
+      x: canvas.width / 2, 
+      y: canvas.height / 2, 
+      history: [],
+      color: getEvilCursorColor()
+    });
+    lastCursorSpawnTime = gameTime;
+  }
+  
+  if (currentMode === 'obstacle' && gameTime - lastObstacleSpawnTime >= 3) {
+    spawnObstacle();
+    lastObstacleSpawnTime = gameTime;
+  }
+
+  if (currentMode === 'sensitivity' && gameTime - lastSensitivityChangeTime >= Math.random() * 9 + 1) {
+    changeSensitivity();
+    lastSensitivityChangeTime = gameTime;
+  }
+
+  if (currentMode === 'party') {
+    spawnConfetti();
+  }
+
+  if (currentMode === 'ghost' && gameTime - lastGhostFlashTime >= ghostFlashInterval) {
+    ghostsVisible = !ghostsVisible;
+    lastGhostFlashTime = gameTime;
+    ghostFlashInterval = 6 + Math.random() * 2; // Set next interval between 6-8 seconds
+  }
+  
+  // Smooth player movement with dynamic sensitivity and smoothness
+  player.x += (player.targetX - player.x) * smoothness * sensitivity;
+  player.y += (player.targetY - player.y) * smoothness * sensitivity;
+  
+  evilCursors.forEach((cursor, index) => {
+    cursor.history.push({ x: player.x, y: player.y });
+    if (cursor.history.length > 60 * (index + 1)) {
+      const oldPos = cursor.history.shift();
+      cursor.x = oldPos.x;
+      cursor.y = oldPos.y;
+    }
+    
+    if (checkCollision(player, cursor)) {
+      isGameOver = true;
+    }
+  });
+  
+  obstacles.forEach(obstacle => {
+    if (obstacle.moving) {
+      obstacle.x += obstacle.vx;
+      obstacle.y += obstacle.vy;
+      
+      if (obstacle.x < 0 || obstacle.x > canvas.width) obstacle.vx *= -1;
+      if (obstacle.y < 0 || obstacle.y > canvas.height) obstacle.vy *= -1;
+    }
+    
+    const dx = player.x - obstacle.x;
+    const dy = player.y - obstacle.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance < obstacle.radius + 5) { // Added 5 pixel buffer for cursor size
+      if (obstacle.evil) {
+        isGameOver = true;
+      } else {
+        // Bounce effect
+        const angle = Math.atan2(dy, dx);
+        player.x = obstacle.x + Math.cos(angle) * (obstacle.radius + 5);
+        player.y = obstacle.y + Math.sin(angle) * (obstacle.radius + 5);
+        player.targetX = player.x;
+        player.targetY = player.y;
+      }
+    }
+  });
+
+  confetti = confetti.filter(particle => {
+    particle.y += particle.speed;
+    return particle.y < canvas.height;
+  });
+  
+  document.getElementById('timeElapsed').textContent = Math.floor(gameTime);
+  document.getElementById('cursorCount').textContent = evilCursors.length;
+  document.getElementById('obstacleCount').textContent = obstacles.length;
+}
+
+function checkCollision(cursor1, cursor2) {
+  const dx = cursor1.x - cursor2.x;
+  const dy = cursor1.y - cursor2.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  return distance < 10; // Collision distance for cursors
+}
+
+function drawGame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (currentMode === 'party') {
+    // Draw blurred RGB background
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, `hsl(${(gameTime * 50) % 360}, 100%, 50%)`);
+    gradient.addColorStop(1, `hsl(${(gameTime * 50 + 180) % 360}, 100%, 50%)`);
+    ctx.fillStyle = gradient;
+    ctx.filter = 'blur(50px)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.filter = 'none';
+  }
+  
+  // Draw obstacles
+  obstacles.forEach(drawObstacle);
+  
+  // Draw evil cursors
+  evilCursors.forEach((cursor, index) => {
+    drawCursor(cursor.x, cursor.y, cursor.color, currentMode === 'ghost');
+  });
+  
+  // Draw confetti
+  confetti.forEach(drawConfetti);
+
+  // Draw player cursor
+  const playerColor = `hsl(${(gameTime * 100) % 360}, 100%, 50%)`;
+  drawCursor(player.x, player.y, playerColor);
+  
+  if (isGameOver) {
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'white';
+    ctx.font = '48px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 2);
+    ctx.font = '24px Arial';
+    ctx.fillText(`You survived for ${Math.floor(gameTime)} seconds in ${currentMode} mode!`, canvas.width / 2, canvas.height / 2 + 50);
+    ctx.fillText('Click to play again', canvas.width / 2, canvas.height / 2 + 100);
+  }
+}
+
+function gameLoop() {
+  if (!isGameOver) {
+    updateGame();
+  }
+  drawGame();
+  requestAnimationFrame(gameLoop);
+}
+
+canvas.addEventListener('mousemove', (e) => {
+  player.targetX = e.clientX;
+  player.targetY = e.clientY;
+});
+
+canvas.addEventListener('click', () => {
+  if (isGameOver) {
+    isGameOver = false;
+    gameTime = 0;
+    lastCursorSpawnTime = 0;
+    lastObstacleSpawnTime = 0;
+    lastSensitivityChangeTime = 0;
+    lastGhostFlashTime = 0;
+    ghostsVisible = true;
+    evilCursors = [];
+    obstacles = [];
+    confetti = [];
+    player = { x: 0, y: 0, targetX: 0, targetY: 0 };
+    sensitivity = 1;
+    smoothness = 0.1;
+    updateSensitivityInfo();
+  }
+});
+
+modeSelect.addEventListener('change', (e) => {
+  currentMode = e.target.value;
+  isGameOver = false;
+  gameTime = 0;
+  lastCursorSpawnTime = 0;
+  lastObstacleSpawnTime = 0;
+  lastSensitivityChangeTime = 0;
+  lastGhostFlashTime = 0;
+  ghostsVisible = true;
+  evilCursors = [];
+  obstacles = [];
+  confetti = [];
+  player = { x: 0, y: 0, targetX: 0, targetY: 0 };
+  sensitivity = 1;
+  smoothness = 0.1;
+  updateSensitivityInfo();
+});
+
+// Hide the default cursor
+document.body.style.cursor = 'none';
+
+gameLoop();
+</script></body></html>

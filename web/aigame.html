@@ -1,0 +1,503 @@
+<html><head>
+<title>Evolving AI-Driven Game Development</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background: #000;
+  color: #0f0;
+  height: 100%;
+  overflow: hidden;
+}
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+}
+h1, h2 {
+  font-size: 1.2rem;
+  text-align: center;
+  margin: 0 0 10px 0;
+  color: #0f0;
+  text-shadow: 0 0 5px #0f0;
+}
+h2 {
+  font-size: 1rem;
+}
+.canvas-container {
+  flex-grow: 1;
+  background: #000;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #0f0;
+  box-shadow: inset 0 0 10px #0f0;
+  touch-action: none;
+}
+.ai-agent {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-size: contain;
+  transition: all 0.2s ease;
+}
+.prime-agent {
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="%230f0"/><circle cx="30" cy="30" r="10" fill="%23000"/><circle cx="70" cy="30" r="10" fill="%23000"/><path d="M30 70 Q50 85 70 70" stroke="%23000" stroke-width="5" fill="none"/></svg>') no-repeat center center;
+}
+.sub-agent {
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="%2300f"/><circle cx="30" cy="30" r="10" fill="%23fff"/><circle cx="70" cy="30" r="10" fill="%23fff"/><path d="M30 70 Q50 85 70 70" stroke="%23fff" stroke-width="5" fill="none"/></svg>') no-repeat center center;
+}
+.info {
+  font-size: 0.8rem;
+  text-align: center;
+  margin-top: 10px;
+}
+@keyframes pulse {
+  0% { transform: scale(1); filter: hue-rotate(0deg); }
+  50% { transform: scale(1.1); filter: hue-rotate(180deg); }
+  100% { transform: scale(1); filter: hue-rotate(360deg); }
+}
+.pulse {
+  animation: pulse 0.5s infinite;
+}
+#game-canvas {
+  width: 100%;
+  height: 200px;
+  margin-top: 10px;
+  border: 1px solid #0f0;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Evolving AI-Driven Game Development</h1>
+  <div class="canvas-container" id="canvas-container">
+    <div class="ai-agent prime-agent" id="prime-agent"></div>
+  </div>
+  <div class="info">
+    <div>Agents: <span id="agent-count">1</span></div>
+    <div>Game Progress: <span id="game-progress">0</span>%</div>
+    <div>Game Version: <span id="game-version">1</span></div>
+    <div>Features: <span id="features-implemented">0</span></div>
+  </div>
+  <h2>AI-Generated Evolving Platform Game</h2>
+  <canvas id="game-canvas"></canvas>
+</div>
+
+<script>
+const canvasContainer = document.getElementById('canvas-container');
+const primeAgent = document.getElementById('prime-agent');
+const agentCountSpan = document.getElementById('agent-count');
+const gameProgressSpan = document.getElementById('game-progress');
+const gameVersionSpan = document.getElementById('game-version');
+const featuresImplementedSpan = document.getElementById('features-implemented');
+const gameCanvas = document.getElementById('game-canvas');
+const ctx = gameCanvas.getContext('2d');
+
+let agents = [{ element: primeAgent, specialization: 'design' }];
+let gameProgress = 0;
+let featuresImplemented = 0;
+let gameVersion = 1;
+const maxAgents = 20;
+const gameFeatures = [
+  'player', 'platforms', 'enemies', 'collectibles', 'background',
+  'physics', 'levels', 'powerups', 'obstacles', 'boss'
+];
+
+// Game state
+let player = { x: 50, y: 150, width: 20, height: 20, velocityY: 0, velocityX: 0 };
+let platforms = [];
+let collectibles = [];
+let enemies = [];
+let powerups = [];
+let obstacles = [];
+let boss = null;
+let levels = [];
+let currentLevel = 0;
+let score = 0;
+let gameLoop;
+
+function createSubAgent() {
+  if (agents.length < maxAgents) {
+    const subAgent = document.createElement('div');
+    subAgent.className = 'ai-agent sub-agent';
+    subAgent.style.left = `${Math.random() * (canvasContainer.clientWidth - 20)}px`;
+    subAgent.style.top = `${Math.random() * (canvasContainer.clientHeight - 20)}px`;
+    canvasContainer.appendChild(subAgent);
+    const specialization = gameFeatures[Math.floor(Math.random() * gameFeatures.length)];
+    agents.push({ element: subAgent, specialization });
+    agentCountSpan.textContent = agents.length;
+  }
+}
+
+function moveAgent(agent) {
+  const maxX = canvasContainer.clientWidth - agent.element.clientWidth;
+  const maxY = canvasContainer.clientHeight - agent.element.clientHeight;
+  const x = Math.random() * maxX;
+  const y = Math.random() * maxY;
+  agent.element.style.left = `${x}px`;
+  agent.element.style.top = `${y}px`;
+}
+
+function pulseAgent(agent) {
+  agent.element.classList.add('pulse');
+  setTimeout(() => {
+    agent.element.classList.remove('pulse');
+  }, 500);
+}
+
+function implementFeature() {
+  if (featuresImplemented < gameFeatures.length) {
+    const feature = gameFeatures[featuresImplemented];
+    switch (feature) {
+      case 'player':
+        player.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        break;
+      case 'platforms':
+        platforms = [];
+        for (let i = 0; i < 5; i++) {
+          platforms.push({
+            x: Math.random() * (gameCanvas.width - 50),
+            y: Math.random() * gameCanvas.height,
+            width: 50 + Math.random() * 50,
+            height: 10 + Math.random() * 10,
+            color: `hsl(${Math.random() * 360}, 50%, 50%)`
+          });
+        }
+        break;
+      case 'enemies':
+        enemies = [];
+        for (let i = 0; i < 3; i++) {
+          enemies.push({
+            x: Math.random() * (gameCanvas.width - 20),
+            y: Math.random() * (gameCanvas.height - 20),
+            width: 20,
+            height: 20,
+            velocityX: (Math.random() - 0.5) * 2,
+            color: `hsl(${Math.random() * 360}, 100%, 50%)`
+          });
+        }
+        break;
+      case 'collectibles':
+        collectibles = [];
+        for (let i = 0; i < 5; i++) {
+          collectibles.push({
+            x: Math.random() * (gameCanvas.width - 10),
+            y: Math.random() * (gameCanvas.height - 10),
+            width: 10,
+            height: 10,
+            color: `hsl(${Math.random() * 360}, 100%, 50%)`
+          });
+        }
+        break;
+      case 'background':
+        gameCanvas.style.background = `linear-gradient(${Math.random() * 360}deg, ${randomColor()}, ${randomColor()})`;
+        break;
+      case 'physics':
+        player.friction = 0.8;
+        player.gravity = 0.5;
+        player.jumpStrength = -10;
+        break;
+      case 'levels':
+        levels = [
+          { name: "Level 1", difficulty: 1 },
+          { name: "Level 2", difficulty: 2 },
+          { name: "Level 3", difficulty: 3 }
+        ];
+        break;
+      case 'powerups':
+        powerups = [];
+        for (let i = 0; i < 2; i++) {
+          powerups.push({
+            x: Math.random() * (gameCanvas.width - 15),
+            y: Math.random() * (gameCanvas.height - 15),
+            width: 15,
+            height: 15,
+            color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+            type: Math.random() < 0.5 ? 'speed' : 'jump'
+          });
+        }
+        break;
+      case 'obstacles':
+        obstacles = [];
+        for (let i = 0; i < 3; i++) {
+          obstacles.push({
+            x: Math.random() * (gameCanvas.width - 30),
+            y: Math.random() * (gameCanvas.height - 30),
+            width: 30,
+            height: 30,
+            color: `hsl(${Math.random() * 360}, 50%, 25%)`
+          });
+        }
+        break;
+      case 'boss':
+        boss = {
+          x: gameCanvas.width / 2 - 40,
+          y: 50,
+          width: 80,
+          height: 80,
+          health: 100,
+          color: `hsl(${Math.random() * 360}, 100%, 50%)`
+        };
+        break;
+    }
+    featuresImplemented++;
+    featuresImplementedSpan.textContent = featuresImplemented;
+  }
+}
+
+function randomColor() {
+  return `hsl(${Math.random() * 360}, ${50 + Math.random() * 50}%, ${50 + Math.random() * 50}%)`;
+}
+
+function updateGame() {
+  // Apply physics
+  player.velocityY += player.gravity;
+  player.velocityX *= player.friction;
+  player.x += player.velocityX;
+  player.y += player.velocityY;
+
+  // Check platform collisions
+  platforms.forEach(platform => {
+    if (player.y + player.height > platform.y &&
+        player.y < platform.y + platform.height &&
+        player.x + player.width > platform.x &&
+        player.x < platform.x + platform.width) {
+      player.y = platform.y - player.height;
+      player.velocityY = 0;
+    }
+  });
+
+  // Move enemies
+  enemies.forEach(enemy => {
+    enemy.x += enemy.velocityX;
+    if (enemy.x <= 0 || enemy.x + enemy.width >= gameCanvas.width) {
+      enemy.velocityX *= -1;
+    }
+  });
+
+  // Check boundaries
+  if (player.x < 0) player.x = 0;
+  if (player.x + player.width > gameCanvas.width) player.x = gameCanvas.width - player.width;
+  if (player.y + player.height > gameCanvas.height) {
+    player.y = gameCanvas.height - player.height;
+    player.velocityY = 0;
+  }
+
+  // Collect items
+  collectibles = collectibles.filter(item => {
+    if (checkCollision(player, item)) {
+      score += 10;
+      return false;
+    }
+    return true;
+  });
+
+  // Use powerups
+  powerups = powerups.filter(powerup => {
+    if (checkCollision(player, powerup)) {
+      if (powerup.type === 'speed') {
+        player.velocityX *= 1.5;
+      } else if (powerup.type === 'jump') {
+        player.jumpStrength *= 1.2;
+      }
+      return false;
+    }
+    return true;
+  });
+
+  // Check enemy collisions
+  enemies.forEach(enemy => {
+    if (checkCollision(player, enemy)) {
+      resetLevel();
+    }
+  });
+
+  // Check obstacle collisions
+  obstacles.forEach(obstacle => {
+    if (checkCollision(player, obstacle)) {
+      resetLevel();
+    }
+  });
+
+  // Boss logic
+  if (boss && checkCollision(player, boss)) {
+    boss.health -= 10;
+    if (boss.health <= 0) {
+      boss = null;
+      score += 1000;
+    } else {
+      resetLevel();
+    }
+  }
+
+  // Draw game
+  ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+  
+  // Draw player
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.width, player.height);
+
+  // Draw platforms
+  platforms.forEach(platform => {
+    ctx.fillStyle = platform.color;
+    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+  });
+
+  // Draw enemies
+  enemies.forEach(enemy => {
+    ctx.fillStyle = enemy.color;
+    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+  });
+
+  // Draw collectibles
+  collectibles.forEach(collectible => {
+    ctx.fillStyle = collectible.color;
+    ctx.fillRect(collectible.x, collectible.y, collectible.width, collectible.height);
+  });
+
+  // Draw powerups
+  powerups.forEach(powerup => {
+    ctx.fillStyle = powerup.color;
+    ctx.fillRect(powerup.x, powerup.y, powerup.width, powerup.height);
+  });
+
+  // Draw obstacles
+  obstacles.forEach(obstacle => {
+    ctx.fillStyle = obstacle.color;
+    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+  });
+
+  // Draw boss
+  if (boss) {
+    ctx.fillStyle = boss.color;
+    ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+  }
+
+  // Draw score
+  ctx.fillStyle = '#fff';
+  ctx.font = '16px Arial';
+  ctx.fillText(`Score: ${score}`, 10, 20);
+  ctx.fillText(`Level: ${currentLevel + 1}`, 10, 40);
+}
+
+function checkCollision(obj1, obj2) {
+  return obj1.x < obj2.x + obj2.width &&
+         obj1.x + obj1.width > obj2.x &&
+         obj1.y < obj2.y + obj2.height &&
+         obj1.y + obj1.height > obj2.y;
+}
+
+function resetLevel() {
+  player.x = 50;
+  player.y = 150;
+  player.velocityX = 0;
+  player.velocityY = 0;
+}
+
+function simulateCollaboration() {
+  agents.forEach(agent => {
+    moveAgent(agent);
+    if (Math.random() < 0.1) {
+      pulseAgent(agent);
+      implementFeature();
+    }
+  });
+
+  gameProgress = Math.min(100, gameProgress + 0.1);
+  gameProgressSpan.textContent = gameProgress.toFixed(1);
+
+  if (Math.random() < 0.05) {
+    createSubAgent();
+  }
+
+  if (gameProgress >= 100) {
+    if (gameLoop) {
+      clearInterval(gameLoop);
+      gameLoop = null;
+    }
+    rebuildGame();
+  } else if (!gameLoop) {
+    startGame();
+  }
+
+  requestAnimationFrame(simulateCollaboration);
+}
+
+function startGame() {
+  gameCanvas.width = gameCanvas.clientWidth;
+  gameCanvas.height = gameCanvas.clientHeight;
+  resetLevel();
+  gameLoop = setInterval(updateGame, 1000 / 60); // 60 FPS
+}
+
+function rebuildGame() {
+  gameVersion++;
+  gameVersionSpan.textContent = gameVersion;
+  gameProgress = 0;
+  featuresImplemented = 0;
+  score = 0;
+  currentLevel = 0;
+  
+  // Reset game elements
+  player = { x: 50, y: 150, width: 20, height: 20, velocityY: 0, velocityX: 0 };
+  platforms = [];
+  collectibles = [];
+  enemies = [];
+  powerups = [];
+  obstacles = [];
+  boss = null;
+  levels = [];
+
+  // Implement new features
+  gameFeatures.forEach(() => implementFeature());
+
+  // Start the new game
+  startGame();
+}
+
+function resizeHandler() {
+  gameCanvas.width = gameCanvas.clientWidth;
+  gameCanvas.height = gameCanvas.clientHeight;
+}
+
+window.addEventListener('resize', resizeHandler);
+simulateCollaboration();
+
+// Touch events for interactivity
+canvasContainer.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect = canvasContainer.getBoundingClientRect();
+  primeAgent.style.left = `${touch.clientX - rect.left - primeAgent.clientWidth / 2}px`;
+  primeAgent.style.top = `${touch.clientY - rect.top - primeAgent.clientHeight / 2}px`;
+  pulseAgent(agents[0]);
+  implementFeature();
+});
+
+// Game controls
+gameCanvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (gameLoop) {
+    if (player.velocityY === 0) {
+      player.velocityY = player.jumpStrength;
+    }
+  }
+});
+
+gameCanvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (gameLoop) {
+    const touch = e.touches[0];
+    const rect = gameCanvas.getBoundingClientRect();
+    const touchX = touch.clientX - rect.left;
+    player.velocityX = (touchX - player.x - player.width / 2) * 0.1;
+  }
+});
+
+</script>
+</body></html>

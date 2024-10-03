@@ -1,0 +1,634 @@
+<html><head><base href="https://windows7simulator.com">
+
+<title>Windows 7 Simulator</title>
+
+<style>
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+  cursor: default;
+}
+
+.desktop {
+  background-image: url('https://wparena.com/wp-content/uploads/2009/09/img0.jpg');
+  background-size: cover;
+  height: 100vh;
+  position: relative;
+}
+
+.taskbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(to bottom, #2672ec, #2462c7, #245edb);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  box-shadow: 0 -1px 5px rgba(0,0,0,0.3);
+}
+
+.start-button {
+  width: 50px;
+  height: 100%;
+  background: url('https://lh4.googleusercontent.com/proxy/JbPDoi_0lu1MlONO5rBMsEZ-2KMoS1Uwqca6R3Nt33xXCGWjwZb-Qu00W0xHIqB8_xyy-5Q3JbuA5dGcdbi8sySVaU3WKekYRWpjsJw') no-repeat center;
+  background-size: contain;
+  cursor: pointer;
+}
+
+.taskbar-items {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  margin-left: 10px;
+}
+
+.taskbar-item {
+  width: 40px;
+  height: 34px;
+  margin-right: 5px;
+  background: linear-gradient(to bottom, #4488ff, #2266dd);
+  border: 1px solid #1155cc;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.clock {
+  position: absolute;
+  right: 10px;
+  color: white;
+  font-size: 12px;
+  text-align: right;
+}
+
+.desktop-icon {
+  width: 75px;
+  text-align: center;
+  color: white;
+  margin: 20px;
+  cursor: pointer;
+}
+
+.desktop-icon img {
+  width: 48px;
+  height: 48px;
+}
+
+.desktop-icon p {
+  margin: 5px 0;
+  text-shadow: 1px 1px 3px black;
+}
+
+.window {
+  position: absolute;
+  width: 500px;
+  height: 400px;
+  background-color: #ffffff;
+  border: 1px solid #999999;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+.window-header {
+  background: linear-gradient(to bottom, #ffffff, #d9e4f1);
+  padding: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 8px 8px 0 0;
+}
+
+.window-title {
+  font-weight: bold;
+  color: #333;
+}
+
+.window-controls span {
+  margin-left: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.window-content {
+  padding: 10px;
+  height: calc(100% - 30px);
+  overflow: auto;
+}
+
+</style>
+</head>
+<body>
+
+<div class="desktop">
+  <div class="desktop-icon" onclick="openWindow('explorer')">
+    <img src="https://ia902201.us.archive.org/0/items/windows-7-icons_202202/windows-explorer-icon-32393-Windows.ico" alt="File Explorer">
+    <p>File Explorer</p>
+  </div>
+  
+  <div class="desktop-icon" onclick="openWindow('recycle')">
+    <img src="https://i.ibb.co/C5Zf8zT/9bf30772c016e818772973739917e2ce.png" alt="Recycle Bin">
+    <p>Recycle Bin</p>
+</div>
+
+  <div class="desktop-icon" onclick="openWindow('ie')">
+    <img src="https://ia802201.us.archive.org/0/items/windows-7-icons_202202/Start%20Menu%20480.ico" alt="Internet Explorer">
+    <p>Internet Explorer</p>
+  </div>
+
+  <div class="desktop-icon" onclick="openWindow('calculator')">
+    <img src="https://ia902201.us.archive.org/0/items/windows-7-icons_202202/Start%20Menu%20469.ico" alt="Calculator">
+    <p>Calculator</p>
+  </div>
+
+  <div class="desktop-icon" onclick="openWindow('media')">
+    <img src="https://ia802201.us.archive.org/0/items/windows-7-icons_202202/Start%20Menu%20503.ico" alt="Media Player">
+    <p>Media Player</p>
+  </div>
+
+  <div class="desktop-icon" onclick="openWindow('notepad')">
+    <img src="https://ia802201.us.archive.org/0/items/windows-7-icons_202202/Start%20Menu%20494.ico" alt="Notepad">
+    <p>Notepad</p>
+  </div>
+
+  <div class="desktop-icon" onclick="openWindow('paint')">
+    <img src="https://ia902201.us.archive.org/0/items/windows-7-icons_202202/Start%20Menu%20492.ico" alt="Paint">
+    <p>Paint</p>
+  </div>
+
+  <div id="explorerWindow" class="window" style="display: none; top: 50px; left: 100px;">
+    <div class="window-header">
+      <div class="window-title">File Explorer</div>
+      <div class="window-controls">
+        <span onclick="minimizeWindow('explorer')">_</span>
+        <span onclick="maximizeWindow('explorer')">□</span>
+        <span onclick="closeWindow('explorer')">✖</span>
+      </div>
+    </div>
+    <div class="window-content">
+  <div style="display: flex; flex-direction: column; height: 100%;">
+    <div style="background-color: #f0f0f0; padding: 5px; border-bottom: 1px solid #ccc;">
+      <div style="display: flex; align-items: center;">
+        <button style="padding: 2px 5px; margin-right: 5px;">◀</button>
+        <button style="padding: 2px 5px; margin-right: 5px;">▶</button>
+        <button style="padding: 2px 5px; margin-right: 5px;">↑</button>
+        <input type="text" value="C:\Users\User\Documents" style="width: 70%; padding: 5px; margin-right: 5px;">
+        <button style="padding: 2px 5px;">🔍</button>
+      </div>
+    </div>
+    <div style="display: flex; height: 100%;">
+      <div style="width: 200px; background-color: #f9f9f9; border-right: 1px solid #ccc; padding: 10px;">
+        <div style="margin-bottom: 10px;">
+          <strong>Favorites</strong>
+          <ul style="list-style-type: none; padding-left: 15px;">
+            <li>Desktop</li>
+            <li>Downloads</li>
+            <li>Recent Places</li>
+          </ul>
+        </div>
+        <div>
+          <strong>Libraries</strong>
+          <ul style="list-style-type: none; padding-left: 15px;">
+            <li>Documents</li>
+            <li>Music</li>
+            <li>Pictures</li>
+            <li>Videos</li>
+          </ul>
+        </div>
+      </div>
+      <div style="flex-grow: 1; padding: 10px; overflow: auto;">
+        <div style="display: flex; flex-wrap: wrap;">
+          <div style="margin: 5px; text-align: center;">
+            <img src="https://i.ibb.co/3Yttg72/directory-icon.png" alt="Folder" style="width: 48px; height: 48px;">
+            <p>New folder</p>
+          </div>
+          <div style="margin: 5px; text-align: center;">
+            <img src="https://i.ibb.co/3Yttg72/directory-icon.png" alt="Folder" style="width: 48px; height: 48px;">
+            <p>Personal</p>
+          </div>
+          <div style="margin: 5px; text-align: center;">
+            <img src="https://i.ibb.co/3Yttg72/directory-icon.png" alt="Folder" style="width: 48px; height: 48px;">
+            <p>Work</p>
+          </div>
+          <div style="margin: 5px; text-align: center;">
+            <img src="https://i.ibb.co/6yt8tS7/file-icon.png" alt="File" style="width: 48px; height: 48px;">
+            <p>Report.docx</p>
+          </div>
+          <div style="margin: 5px; text-align: center;">
+            <img src="https://i.ibb.co/6yt8tS7/file-icon.png" alt="File" style="width: 48px; height: 48px;">
+            <p>Budget.xlsx</p>
+          </div>
+          <div style="margin: 5px; text-align: center;">
+            <img src="https://i.ibb.co/6yt8tS7/file-icon.png" alt="File" style="width: 48px; height: 48px;">
+            <p>Presentation.pptx</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="background-color: #f0f0f0; padding: 5px; border-top: 1px solid #ccc;">
+      <span>6 items</span>
+    </div>
+  </div>
+</div>
+  </div>
+
+  <div id="recycleWindow" class="window" style="display: none; top: 100px; left: 150px;">
+    <div class="window-header">
+      <div class="window-title">Recycle Bin</div>
+      <div class="window-controls">
+        <span onclick="minimizeWindow('recycle')">_</span>
+        <span onclick="maximizeWindow('recycle')">□</span>
+        <span onclick="closeWindow('recycle')">✖</span>
+      </div>
+    </div>
+    <div class="window-content">
+      <p>The Recycle Bin is empty.</p>
+      <p>Items you delete will appear here temporarily, allowing you to restore them if needed.</p>
+    </div>
+  </div>
+
+  <div id="ieWindow" class="window" style="display: none; top: 150px; left: 200px;">
+    <div class="window-header" style="background: rgba(255, 255, 255, 0.8);
+backdrop-filter: blur(10px);
+border-radius: 8px 8px 0 0;
+border: 1px solid rgba(255, 255, 255, 0.2);
+box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+padding: 8px 10px;">
+  <div class="window-title" style="color: #333; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);">Internet Explorer</div>
+  <div class="window-controls">
+    <span onclick="minimizeWindow('ie')" style="color: #666; margin-left: 5px; font-size: 14px;">🗕</span>
+    <span onclick="maximizeWindow('ie')" style="color: #666; margin-left: 5px; font-size: 14px;">🗖</span>
+    <span onclick="closeWindow('ie')" style="color: #666; margin-left: 5px; font-size: 14px;">✕</span>
+  </div>
+</div>
+    <div class="window-content">
+  <div style="display: flex; flex-direction: column; height: 100%;">
+    <div style="background-color: #f1f1f1; padding: 5px; border-bottom: 1px solid #ccc;">
+      <div style="display: flex; align-items: center;">
+        <button style="padding: 2px 5px; margin-right: 5px;">◀ Back</button>
+        <button style="padding: 2px 5px; margin-right: 5px;">▶ Forward</button>
+        <button style="padding: 2px 5px; margin-right: 5px;">↻ Refresh</button>
+        <input type="text" placeholder="http://www.example.com" style="width: 70%; padding: 5px; margin-right: 5px;">
+        <button style="padding: 2px 5px;">Go</button>
+      </div>
+    </div>
+    <div style="background-color: #e5e5e5; padding: 2px 5px; border-bottom: 1px solid #ccc;">
+      <span style="font-size: 12px;">File</span>
+      <span style="font-size: 12px; margin-left: 10px;">Edit</span>
+      <span style="font-size: 12px; margin-left: 10px;">View</span>
+      <span style="font-size: 12px; margin-left: 10px;">Favorites</span>
+      <span style="font-size: 12px; margin-left: 10px;">Tools</span>
+      <span style="font-size: 12px; margin-left: 10px;">Help</span>
+    </div>
+    <div style="flex-grow: 1; padding: 10px; background-color: white; overflow: auto;">
+      <h2>Welcome to Internet Explorer 8</h2>
+      <p>This is a simulated version of Internet Explorer 8, as it would appear in Windows 7.</p>
+      <ul>
+        <li><a href="#">MSN Homepage</a></li>
+        <li><a href="#">Windows Live</a></li>
+        <li><a href="#">Bing Search</a></li>
+        <li><a href="#">Microsoft Office Online</a></li>
+      </ul>
+      <p>Please note: This is a simulation. In reality, Internet Explorer 8 is no longer supported and should not be used for actual web browsing due to security concerns.</p>
+    </div>
+    <div style="background-color: #f1f1f1; padding: 2px 5px; border-top: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 12px;">Internet</span>
+      <div>
+        <span style="font-size: 12px; margin-right: 10px;">100%</span>
+        <span style="font-size: 12px;">Protected Mode: On</span>
+      </div>
+    </div>
+  </div>
+</div>
+  </div>
+
+  <div id="calculatorWindow" class="window" style="display: none; top: 50px; left: 250px;">
+    <div class="window-header">
+      <div class="window-title">Calculator</div>
+      <div class="window-controls">
+        <span onclick="minimizeWindow('calculator')">_</span>
+        <span onclick="maximizeWindow('calculator')">□</span>
+        <span onclick="closeWindow('calculator')">✖</span>
+      </div>
+    </div>
+    <div class="window-content">
+      <p>This is a simulated Windows 7 Calculator.</p>
+      <p>In a real Windows 7 system, you would see a functional calculator here.</p>
+    </div>
+  </div>
+
+  <div id="mediaWindow" class="window" style="display: none; top: 100px; left: 300px;">
+    <div class="window-header">
+      <div class="window-title">Windows Media Player</div>
+      <div class="window-controls">
+        <span onclick="minimizeWindow('media')">_</span>
+        <span onclick="maximizeWindow('media')">□</span>
+        <span onclick="closeWindow('media')">✖</span>
+      </div>
+    </div>
+    <div class="window-content">
+      <p>This is a simulated Windows Media Player.</p>
+      <p>In a real Windows 7 system, you would be able to play music and videos here.</p>
+    </div>
+  </div>
+
+  <div id="notepadWindow" class="window" style="display: none; top: 150px; left: 350px;">
+    <div class="window-header">
+      <div class="window-title">Notepad</div>
+      <div class="window-controls">
+        <span onclick="minimizeWindow('notepad')">_</span>
+        <span onclick="maximizeWindow('notepad')">□</span>
+        <span onclick="closeWindow('notepad')">✖</span>
+      </div>
+    </div>
+    <div class="window-content">
+      <textarea style="width: 100%; height: 90%; resize: none;">This is a simulated Notepad. In a real Windows 7 system, you would be able to type and edit text here.</textarea>
+    </div>
+  </div>
+
+  <div id="paintWindow" class="window" style="display: none; top: 200px; left: 400px;">
+    <div class="window-header">
+      <div class="window-title">Paint</div>
+      <div class="window-controls">
+        <span onclick="minimizeWindow('paint')">_</span>
+        <span onclick="maximizeWindow('paint')">□</span>
+        <span onclick="closeWindow('paint')">✖</span>
+      </div>
+    </div>
+    <div class="window-content">
+  <div style="display: flex; flex-direction: column; height: 100%;">
+    <div style="display: flex; justify-content: space-between; padding: 5px; background-color: #f0f0f0; border-bottom: 1px solid #d0d0d0;">
+      <div>
+        <button onclick="newCanvas()">New</button>
+        <button onclick="saveCanvas()">Save</button>
+      </div>
+      <div>
+        <label for="brushSize">Size:</label>
+        <input type="range" id="brushSize" min="1" max="20" value="5" onchange="updateBrushSize()">
+      </div>
+      <div>
+        <input type="color" id="colorPicker" value="#000000" onchange="updateColor()">
+      </div>
+    </div>
+    <canvas id="paintCanvas" style="border:1px solid #d0d0d0; flex-grow: 1;"></canvas>
+    <div style="display: flex; justify-content: space-around; padding: 5px; background-color: #f0f0f0; border-top: 1px solid #d0d0d0;">
+      <button onclick="setTool('brush')">Brush</button>
+      <button onclick="setTool('eraser')">Eraser</button>
+      <button onclick="setTool('line')">Line</button>
+      <button onclick="setTool('rectangle')">Rectangle</button>
+      <button onclick="setTool('circle')">Circle</button>
+      <button onclick="fillCanvas()">Fill</button>
+    </div>
+  </div>
+  <script>
+    const canvas = document.getElementById('paintCanvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+    let color = '#000000';
+    let brushSize = 5;
+    let tool = 'brush';
+
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    function startDrawing(e) {
+      isDrawing = true;
+      [lastX, lastY] = [e.offsetX, e.offsetY];
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = brushSize;
+      ctx.lineCap = 'round';
+
+      switch(tool) {
+        case 'brush':
+          ctx.beginPath();
+          ctx.moveTo(lastX, lastY);
+          ctx.lineTo(e.offsetX, e.offsetY);
+          ctx.stroke();
+          [lastX, lastY] = [e.offsetX, e.offsetY];
+          break;
+        case 'eraser':
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.beginPath();
+          ctx.moveTo(lastX, lastY);
+          ctx.lineTo(e.offsetX, e.offsetY);
+          ctx.stroke();
+          [lastX, lastY] = [e.offsetX, e.offsetY];
+          break;
+        case 'line':
+          ctx.putImageData(imageData, 0, 0);
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(e.offsetX, e.offsetY);
+          ctx.stroke();
+          break;
+        case 'rectangle':
+          ctx.putImageData(imageData, 0, 0);
+          ctx.strokeRect(startX, startY, e.offsetX - startX, e.offsetY - startY);
+          break;
+        case 'circle':
+          ctx.putImageData(imageData, 0, 0);
+          ctx.beginPath();
+          const radius = Math.sqrt(Math.pow(e.offsetX - startX, 2) + Math.pow(e.offsetY - startY, 2));
+          ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
+          ctx.stroke();
+          break;
+      }
+    }
+
+    function stopDrawing() {
+      isDrawing = false;
+    }
+
+    function setTool(newTool) {
+      tool = newTool;
+      if (newTool !== 'brush' && newTool !== 'eraser') {
+        imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        canvas.addEventListener('mousedown', (e) => {
+          startX = e.offsetX;
+          startY = e.offsetY;
+        });
+      }
+    }
+
+    function updateColor() {
+      color = document.getElementById('colorPicker').value;
+    }
+
+    function updateBrushSize() {
+      brushSize = document.getElementById('brushSize').value;
+    }
+
+    function newCanvas() {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function saveCanvas() {
+      const link = document.createElement('a');
+      link.download = 'paint.png';
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+
+    function fillCanvas() {
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Initialize white canvas
+    newCanvas();
+  </script>
+</div>
+  </div>
+
+  <div class="taskbar" style="background: linear-gradient(135deg, 
+    rgba(100, 150, 200, 0.6) 0%, 
+    rgba(100, 150, 200, 0.6) 19%, 
+    rgba(200, 225, 255, 0.7) 20%, 
+    rgba(200, 225, 255, 0.7) 21%, 
+    rgba(100, 150, 200, 0.6) 22%, 
+    rgba(100, 150, 200, 0.6) 39%, 
+    rgba(200, 225, 255, 0.7) 40%, 
+    rgba(200, 225, 255, 0.7) 41%, 
+    rgba(100, 150, 200, 0.6) 42%, 
+    rgba(100, 150, 200, 0.6) 59%, 
+    rgba(200, 225, 255, 0.7) 60%, 
+    rgba(200, 225, 255, 0.7) 61%, 
+    rgba(100, 150, 200, 0.6) 62%, 
+    rgba(100, 150, 200, 0.6) 79%, 
+    rgba(200, 225, 255, 0.7) 80%, 
+    rgba(200, 225, 255, 0.7) 81%, 
+    rgba(100, 150, 200, 0.6) 82%, 
+    rgba(100, 150, 200, 0.6) 100%
+  ); 
+  backdrop-filter: blur(15px) saturate(180%) hue-rotate(190deg);
+  box-shadow: 0 -1px 5px rgba(0,0,0,0.3), inset 0 1px 0 rgba(200,225,255,0.5);
+  transform: skew(-5deg);">
+  <div class="start-button" onclick="toggleStartMenu()" style="background-image: url('https://i.ibb.co/TKqHq3n/a7d0971c0004ce0893b00dbed22585c0.png'); transform: skew(5deg);"></div>
+  <div class="taskbar-items" id="taskbarItems" style="transform: skew(5deg);"></div>
+  <div class="clock" id="clock" style="transform: skew(5deg);"></div>
+</div>
+</div>
+
+<script>
+function updateClock() {
+  const now = new Date();
+  const time = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  const date = now.toLocaleDateString([], {month: 'numeric', day: 'numeric', year: 'numeric'});
+  document.getElementById('clock').innerHTML = `${time}<br>${date}`;
+}
+
+setInterval(updateClock, 1000);
+updateClock();
+
+function openWindow(id) {
+  document.getElementById(id + 'Window').style.display = 'block';
+  addTaskbarItem(id);
+}
+
+function closeWindow(id) {
+  document.getElementById(id + 'Window').style.display = 'none';
+  removeTaskbarItem(id);
+}
+
+function minimizeWindow(id) {
+  document.getElementById(id + 'Window').style.display = 'none';
+}
+
+function maximizeWindow(id) {
+  const window = document.getElementById(id + 'Window');
+  if (window.style.width === '100%') {
+    window.style.width = '500px';
+    window.style.height = '400px';
+    window.style.top = '50px';
+    window.style.left = '100px';
+  } else {
+    window.style.width = '100%';
+    window.style.height = 'calc(100% - 40px)';
+    window.style.top = '0';
+    window.style.left = '0';
+  }
+}
+
+function addTaskbarItem(id) {
+  const taskbarItems = document.getElementById('taskbarItems');
+  if (!document.getElementById('taskbar-' + id)) {
+    const item = document.createElement('div');
+    item.id = 'taskbar-' + id;
+    item.className = 'taskbar-item';
+    item.onclick = function() { toggleWindow(id); };
+    taskbarItems.appendChild(item);
+  }
+}
+
+function removeTaskbarItem(id) {
+  const item = document.getElementById('taskbar-' + id);
+  if (item) {
+    item.parentNode.removeChild(item);
+  }
+}
+
+function toggleWindow(id) {
+  const window = document.getElementById(id + 'Window');
+  if (window.style.display === 'none') {
+    window.style.display = 'block';
+  } else {
+    window.style.display = 'none';
+  }
+}
+
+function toggleStartMenu() {
+  // This function would show/hide the start menu
+  alert("Start menu clicked! In a full simulation, this would open the Windows 7 start menu.");
+}
+
+// Make windows draggable
+const windows = document.querySelectorAll('.window');
+windows.forEach(makeWindowDraggable);
+
+function makeWindowDraggable(windowEl) {
+  const header = windowEl.querySelector('.window-header');
+  let isDragging = false;
+  let startX, startY, startLeft, startTop;
+
+  header.addEventListener('mousedown', startDragging);
+  document.addEventListener('mousemove', drag);
+  document.addEventListener('mouseup', stopDragging);
+
+  function startDragging(e) {
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = parseInt(window.getComputedStyle(windowEl).left);
+    startTop = parseInt(window.getComputedStyle(windowEl).top);
+  }
+
+  function drag(e) {
+    if (!isDragging) return;
+    const deltaX = e.clientX - startX;
+    const deltaY = e.clientY - startY;
+    windowEl.style.left = startLeft + deltaX + 'px';
+    windowEl.style.top = startTop + deltaY + 'px';
+  }
+
+  function stopDragging() {
+    isDragging = false;
+  }
+}
+</script>
+
+</body></html>

@@ -1,0 +1,697 @@
+<html><head><base href="file://swarm.scr?amt=100&type=firefly&formation=web&periodic_scatter=on&scat_int=4.6&scat_action=pulse&flocking=on&cooperate=on&show_connections=on&show_data=on&data_color=00ff00&gravity=0.1&data_in_nodes=3&data_in_node_color=ff0000&data_out_nodes=15&data_out_node_color=0000ff&collide_with_screen_edge=true&pulse_complete=next_formation"><title>SwarmSim: Advanced Multi-Node Data Relay Network</title>
+<style>
+    body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        font-family: 'Courier New', monospace;
+        background-color: #000510;
+        color: #00FFFF;
+    }
+    #swarmCanvas {
+        width: 100%;
+        height: 100%;
+    }
+    #control-panel {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(0,15,30,0.8);
+        padding: 10px;
+        border-radius: 5px;
+        z-index: 1000;
+        color: #00FFFF;
+        border: 2px solid #00FFFF;
+        width: 300px;
+        box-shadow: 0 0 10px #00FFFF;
+    }
+    #roll-button {
+        width: 100%;
+        background: #001520;
+        color: #00FFFF;
+        border: 1px solid #00FFFF;
+        padding: 5px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    button, select, input {
+        margin: 5px 0;
+        padding: 5px 10px;
+        width: 100%;
+        box-sizing: border-box;
+        background: #000510;
+        color: #00FFFF;
+        border: 1px solid #00FFFF;
+        font-family: 'Courier New', monospace;
+    }
+    label {
+        display: inline-block;
+        width: 100%;
+        margin-top: 10px;
+    }
+    h2 {
+        margin-top: 0;
+        color: #00FFFF;
+        text-shadow: 0 0 5px #00FFFF;
+    }
+    #pulse-alert {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(0, 255, 255, 0.2);
+        color: #00FFFF;
+        padding: 20px;
+        border-radius: 10px;
+        font-size: 24px;
+        display: none;
+    }
+    .info-panel {
+        position: fixed;
+        background: rgba(0,15,30,0.8);
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 14px;
+        color: #00FFFF;
+    }
+    #timer { top: 20px; left: 20px; }
+    #swarm-info { bottom: 20px; left: 20px; }
+    #data-flow { bottom: 20px; right: 20px; }
+    #pulse-info { top: 60px; left: 20px; }
+    #relay-info { top: 100px; left: 20px; }
+    #node-info { top: 140px; left: 20px; }
+    #formation-info { top: 180px; left: 20px; }
+</style>
+</head>
+<body>
+<canvas id="swarmCanvas"></canvas>
+
+<div id="control-panel">
+    <button id="roll-button">▼ SwarmSim Controls</button>
+    <div id="controls-content" style="display: none;">
+        <h2>SwarmSim Controls</h2>
+        <form method="GET" action="file://swarm.scr">
+            <label for="amt">Swarm Size:</label>
+            <input type="range" id="amt" name="amt" min="10" max="500" value="100"><br>
+            
+            <label for="type">Agent Type:</label>
+            <select id="type" name="type">
+                <option value="firefly" selected>Firefly</option>
+                <option value="bee">Bee</option>
+                <option value="ant">Ant</option>
+                <option value="fish">Fish</option>
+            </select><br>
+            
+            <label for="formation">Initial Formation:</label>
+            <select id="formation" name="formation">
+                <option value="web" selected>Web</option>
+                <option value="grid">Grid</option>
+                <option value="random">Random</option>
+                <option value="circle">Circle</option>
+            </select><br>
+            
+            <label for="periodic_scatter">Pulsating Behavior:</label>
+            <input type="checkbox" id="periodic_scatter" name="periodic_scatter" checked><br>
+            
+            <label for="scat_int">Pulse Interval (seconds):</label>
+            <input type="number" id="scat_int" name="scat_int" value="4.6" step="0.1" min="1"><br>
+            
+            <label for="scat_action">Pulse Action:</label>
+            <select id="scat_action" name="scat_action">
+                <option value="pulse" selected>Pulse Expansion</option>
+                <option value="optimize">Self-Optimize</option>
+                <option value="random">Random Reorganization</option>
+            </select><br>
+            
+            <label for="flocking">Swarm Intelligence:</label>
+            <input type="checkbox" id="flocking" name="flocking" checked><br>
+            
+            <label for="cooperate">Cooperative Behavior:</label>
+            <input type="checkbox" id="cooperate" name="cooperate" checked><br>
+            
+            <label for="show_connections">Show Connections:</label>
+            <input type="checkbox" id="show_connections" name="show_connections" checked><br>
+            
+            <label for="show_data">Show Data Flow:</label>
+            <input type="checkbox" id="show_data" name="show_data" checked><br>
+            
+            <label for="data_color">Data Color:</label>
+            <input type="color" id="data_color" name="data_color" value="#00FF00"><br>
+            
+            <label for="gravity">Swarm Cohesion:</label>
+            <input type="number" id="gravity" name="gravity" value="0.1" step="0.1" min="0" max="2"><br>
+            
+            <label for="data_in_nodes">Number of Data-In Nodes:</label>
+            <input type="number" id="data_in_nodes" name="data_in_nodes" value="3" min="1" max="20"><br>
+            
+            <label for="data_in_node_color">Data-In Node Color:</label>
+            <input type="color" id="data_in_node_color" name="data_in_node_color" value="#FF0000"><br>
+            
+            <label for="data_out_nodes">Number of Data-Out Nodes:</label>
+            <input type="number" id="data_out_nodes" name="data_out_nodes" value="15" min="1" max="50"><br>
+            
+            <label for="data_out_node_color">Data-Out Node Color:</label>
+            <input type="color" id="data_out_node_color" name="data_out_node_color" value="#0000FF"><br>
+            
+            <label for="collide_with_screen_edge">Collide with Screen Edge:</label>
+            <input type="checkbox" id="collide_with_screen_edge" name="collide_with_screen_edge" checked><br>
+            
+            <label for="pulse_complete">On Pulse Complete:</label>
+            <select id="pulse_complete" name="pulse_complete">
+                <option value="next_formation" selected>Change to Next Formation</option>
+                <option value="random_formation">Random Formation</option>
+                <option value="maintain">Maintain Current Formation</option>
+            </select><br>
+            
+            <button type="submit">Apply Configuration</button>
+        </form>
+    </div>
+</div>
+
+<div id="pulse-alert">Network Pulse Activated!</div>
+<div id="timer" class="info-panel">Next pulse in: 4.6s</div>
+<div id="swarm-info" class="info-panel">Current Formation: Pulsating Web</div>
+<div id="data-flow" class="info-panel">Data Flow: 0 packets/s</div>
+<div id="pulse-info" class="info-panel">Pulse Strength: 0%</div>
+<div id="relay-info" class="info-panel">Packets Relayed: 0</div>
+<div id="node-info" class="info-panel">Data-In: 3 | Data-Out: 15</div>
+<div id="formation-info" class="info-panel">Formation: Web</div>
+
+<script>
+const canvas = document.getElementById('swarmCanvas');
+const ctx = canvas.getContext('2d');
+
+let width, height;
+let agents = [];
+const numAgents = 100;
+let currentFormation = 'web';
+const periodicScatter = true;
+const flocking = true;
+const cooperate = true;
+const showConnections = true;
+const showData = true;
+const dataColor = '#00FF00';
+const gravityStrength = 0.1;
+const numDataInNodes = 3;
+const dataInNodeColor = '#FF0000';
+const numDataOutNodes = 15;
+const dataOutNodeColor = '#0000FF';
+const collideWithScreenEdge = true;
+const pulseCompleteAction = 'next_formation';
+
+const pulseInterval = 4600; // 4.6 seconds
+const pulseDuration = 1000; // 1 second
+let isPulsing = false;
+let lastPulseTime = 0;
+let pulseStrength = 0;
+
+let connections = [];
+let dataPackets = [];
+let swarmCenter = { x: 0, y: 0 };
+let dataFlowRate = 0;
+let packetsRelayed = 0;
+
+let dataInNodes = [];
+let dataOutNodes = [];
+
+const formations = ['web', 'grid', 'random', 'circle'];
+let currentFormationIndex = 0;
+
+function resizeCanvas() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+    swarmCenter = { x: width / 2, y: height / 2 };
+}
+
+class Agent {
+    constructor(index) {
+        this.index = index;
+        this.resetPosition();
+        this.speed = 1 + Math.random() * 1.5;
+        this.size = 3;
+        this.color = [0, 255, 255];
+        this.pulseDirection = Math.random() * Math.PI * 2;
+        this.connectedAgents = [];
+        this.intensity = Math.random();
+        this.phase = Math.random() * Math.PI * 2;
+        this.frequency = 0.1 + Math.random() * 0.2;
+        this.data = false;
+        this.isDataIn = false;
+        this.isDataOut = false;
+    }
+
+    resetPosition() {
+        switch(currentFormation) {
+            case 'web':
+                const angle = (this.index / numAgents) * Math.PI * 2;
+                const radius = Math.min(width, height) * 0.4;
+                this.x = swarmCenter.x + Math.cos(angle) * radius;
+                this.y = swarmCenter.y + Math.sin(angle) * radius;
+                break;
+            case 'grid':
+                const cols = Math.ceil(Math.sqrt(numAgents));
+                const rows = Math.ceil(numAgents / cols);
+                const cellWidth = width / cols;
+                const cellHeight = height / rows;
+                const col = this.index % cols;
+                const row = Math.floor(this.index / cols);
+                this.x = col * cellWidth + cellWidth / 2;
+                this.y = row * cellHeight + cellHeight / 2;
+                break;
+            case 'random':
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                break;
+            case 'circle':
+                const circleAngle = (this.index / numAgents) * Math.PI * 2;
+                const circleRadius = Math.min(width, height) * 0.4;
+                this.x = swarmCenter.x + Math.cos(circleAngle) * circleRadius;
+                this.y = swarmCenter.y + Math.sin(circleAngle) * circleRadius;
+                break;
+        }
+        this.targetX = this.x;
+        this.targetY = this.y;
+    }
+
+    update(swarm, time) {
+        if (isPulsing) {
+            const pulseForce = pulseStrength * 5;
+            this.x += Math.cos(this.pulseDirection) * pulseForce;
+            this.y += Math.sin(this.pulseDirection) * pulseForce;
+        } else {
+            if (flocking) {
+                const flockCenter = this.getFlockCenter(swarm);
+                this.targetX = (this.targetX + flockCenter.x) / 2;
+                this.targetY = (this.targetY + flockCenter.y) / 2;
+            }
+
+            const dx = this.targetX - this.x;
+            const dy = this.targetY - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > 0) {
+                this.x += (dx / distance) * this.speed;
+                this.y += (dy / distance) * this.speed;
+            }
+
+            // Apply swarm cohesion
+            const dxCenter = swarmCenter.x - this.x;
+            const dyCenter = swarmCenter.y - this.y;
+            const distanceToCenter = Math.sqrt(dxCenter * dxCenter + dyCenter * dyCenter);
+            this.x += (dxCenter / distanceToCenter) * gravityStrength * 0.1;
+            this.y += (dyCenter / distanceToCenter) * gravityStrength * 0.1;
+        }
+
+        // Cooperative behavior
+        if (cooperate) {
+            this.updateConnections(swarm);
+            this.synchronize(swarm, time);
+            this.relayData(swarm);
+        }
+
+        // Screen edge collision
+        if (collideWithScreenEdge) {
+            if (this.x < 0 || this.x > width) this.pulseDirection = Math.PI - this.pulseDirection;
+            if (this.y < 0 || this.y > height) this.pulseDirection = -this.pulseDirection;
+        } else {
+            // Screen wrapping
+            this.x = (this.x + width) % width;
+            this.y = (this.y + height) % height;
+        }
+
+        // Update intensity
+        this.intensity = 0.2 + 0.8 * Math.sin(this.phase + time * this.frequency);
+
+        // Generate new data packet if this is a data-in node
+        if (this.isDataIn && Math.random() < 0.02) { // 2% chance each frame
+            this.data = true;
+        }
+    }
+
+    getFlockCenter(swarm) {
+        let centerX = 0, centerY = 0, count = 0;
+        swarm.forEach(agent => {
+            if (agent !== this && this.distanceTo(agent) < 100) {
+                centerX += agent.x;
+                centerY += agent.y;
+                count++;
+            }
+        });
+        return count > 0 ? { x: centerX / count, y: centerY / count } : { x: this.x, y: this.y };
+    }
+
+    updateConnections(swarm) {
+        this.connectedAgents = swarm.filter(agent => 
+            agent !== this && this.distanceTo(agent) < 100
+        ).slice(0, 3); // Connect to up to 3 nearest neighbors
+    }
+
+    synchronize(swarm, time) {
+        this.connectedAgents.forEach(agent => {
+            const phaseDiff = agent.phase - this.phase;
+            this.phase += Math.sin(phaseDiff) * 0.1;
+            agent.phase -= Math.sin(phaseDiff) * 0.1;
+        });
+        this.phase = (this.phase + Math.PI * 2) % (Math.PI * 2);
+    }
+
+    relayData(swarm) {
+        if (this.data && !this.isDataOut) {
+            const receiver = this.connectedAgents.find(agent => !agent.data) || this.connectedAgents[0];
+            if (receiver) {
+                dataPackets.push({
+                    from: this,
+                    to: receiver,
+                    progress: 0
+                });
+                this.data = false;
+                receiver.data = true;
+                packetsRelayed++;
+            }
+        }
+
+        // If this is a data-out node and it has data, consume it
+        if (this.isDataOut && this.data) {
+            this.data = false;
+        }
+    }
+
+    distanceTo(other) {
+        const dx = this.x - other.x;
+        const dy = this.y - other.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    draw() {
+        // Draw agent
+        const glowSize = this.size + this.intensity * 5;
+        let agentColor;
+        if (this.isDataIn) {
+            agentColor = dataInNodeColor;
+        } else if (this.isDataOut) {
+            agentColor = dataOutNodeColor;
+        } else {
+            agentColor = `rgb(${this.color[0]}, ${this.color[1]}, ${this.color[2]})`;
+        }
+
+        const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowSize);
+        gradient.addColorStop(0, agentColor.replace('rgb', 'rgba').replace(')', `, ${this.intensity})`));
+        gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, glowSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw agent body
+        ctx.fillStyle = agentColor;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw connections
+        if (showConnections) {
+            ctx.strokeStyle = `rgba(0, 255, 255, ${this.intensity * 0.5})`;
+            ctx.lineWidth = 1;
+            this.connectedAgents.forEach(agent => {
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(agent.x, agent.y);
+                ctx.stroke();
+            });
+        }
+
+        // Show if agent has data
+        if (this.data) {
+            ctx.fillStyle = dataColor;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+}
+
+function initAgents() {
+    agents = [];
+    for (let i = 0; i < numAgents; i++) {
+        agents.push(new Agent(i));
+    }
+    
+    // Designate data-in and data-out nodes
+    dataInNodes = agents.slice(0, numDataInNodes);
+    dataInNodes.forEach(node => node.isDataIn = true);
+
+    dataOutNodes = agents.slice(numDataInNodes, numDataInNodes + numDataOutNodes);
+    dataOutNodes.forEach(node => node.isDataOut = true);
+}
+
+function drawBackground() {
+    ctx.fillStyle = 'rgba(0, 5, 16, 0.1)';
+    ctx.fillRect(0, 0, width, height);
+}
+
+function updateAndDraw(timestamp) {
+    drawBackground();
+
+    if (periodicScatter) {
+        const timeSinceLastPulse = timestamp - lastPulseTime;
+        if (!isPulsing && timeSinceLastPulse > pulseInterval) {
+            isPulsing = true;
+            lastPulseTime = timestamp;
+            document.getElementById('pulse-alert').style.display = 'block';
+            agents.forEach(agent => {
+                agent.pulseDirection = Math.random() * Math.PI * 2;
+            });
+        } else if (isPulsing && timeSinceLastPulse > pulseDuration) {
+            isPulsing = false;
+            document.getElementById('pulse-alert').style.display = 'none';
+            
+            // Handle pulse complete action
+            if (pulseCompleteAction === 'next_formation') {
+                currentFormationIndex = (currentFormationIndex + 1) % formations.length;
+                currentFormation = formations[currentFormationIndex];
+                agents.forEach(agent => agent.resetPosition());
+            } else if (pulseCompleteAction === 'random_formation') {
+                currentFormation = formations[Math.floor(Math.random() * formations.length)];
+                agents.forEach(agent => agent.resetPosition());
+            }
+            // For 'maintain', we do nothing
+            
+            document.getElementById('formation-info').textContent = `Formation: ${currentFormation}`;
+        }
+
+        // Update timer
+        const nextPulseIn = (pulseInterval - timeSinceLastPulse) / 1000;
+        document.getElementById('timer').textContent = `Next pulse in: ${nextPulseIn.toFixed(1)}s`;
+
+        // Update pulse strength
+        if (isPulsing) {
+            pulseStrength = Math.sin((timeSinceLastPulse / pulseDuration) * Math.PI);
+        } else {
+            pulseStrength = 0;
+        }
+        document.getElementById('pulse-info').textContent = `Pulse Strength: ${(pulseStrength * 100).toFixed(0)}%`;
+    }
+
+    let packetCount = 0;
+    agents.forEach(agent => {
+        agent.update(agents, timestamp);
+        agent.draw();
+    });
+
+    // Update data packets
+    if (showData) {
+        ctx.strokeStyle = dataColor;
+        ctx.lineWidth = 2;
+        dataPackets = dataPackets.filter(packet => {
+            packet.progress += 0.02;
+            if (packet.progress >= 1) {
+                packetCount++;
+                return false;
+            }
+            const x = packet.from.x + (packet.to.x - packet.from.x) * packet.progress;
+            const y = packet.from.y + (packet.to.y - packet.from.y) * packet.progress;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.stroke();
+            return true;
+        });
+    }
+
+    // Update data flow rate
+    dataFlowRate = dataFlowRate * 0.9 + packetCount * 0.1; // Smooth the rate
+    document.getElementById('data-flow').textContent = `Data Flow: ${dataFlowRate.toFixed(1)} packets/s`;
+    document.getElementById('relay-info').textContent = `Packets Relayed: ${packetsRelayed}`;
+    document.getElementById('node-info').textContent = `Data-In: ${numDataInNodes} | Data-Out: ${numDataOutNodes}`;
+}
+
+function animate(timestamp) {
+    updateAndDraw(timestamp);
+    requestAnimationFrame(animate);
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+initAgents();
+requestAnimationFrame(animate);
+
+// Menu roll/unroll functionality
+const controlPanel = document.getElementById('control-panel');
+const rollButton = document.getElementById('roll-button');
+const controlsContent = document.getElementById('controls-content');
+
+rollButton.addEventListener('click', () => {
+    controlsContent.style.display = controlsContent.style.display === 'none' ? 'block' : 'none';
+    rollButton.textContent = controlsContent.style.display === 'none' ? '▼ SwarmSim Controls' : '▲ SwarmSim Controls';
+});
+
+// Initialize with controls hidden
+controlsContent.style.display = 'none';
+rollButton.textContent = '▼ SwarmSim Controls';
+
+// Add event listeners for form inputs
+document.querySelectorAll('input, select').forEach(element => {
+    element.addEventListener('change', updateSimulationParams);
+});
+
+function updateSimulationParams() {
+    numAgents = parseInt(document.getElementById('amt').value);
+    currentFormation = document.getElementById('formation').value;
+    periodicScatter = document.getElementById('periodic_scatter').checked;
+    flocking = document.getElementById('flocking').checked;
+    cooperate = document.getElementById('cooperate').checked;
+    showConnections = document.getElementById('show_connections').checked;
+    showData = document.getElementById('show_data').checked;
+    dataColor = document.getElementById('data_color').value;
+    gravityStrength = parseFloat(document.getElementById('gravity').value);
+    numDataInNodes = parseInt(document.getElementById('data_in_nodes').value);
+    dataInNodeColor = document.getElementById('data_in_node_color').value;
+    numDataOutNodes = parseInt(document.getElementById('data_out_nodes').value);
+    dataOutNodeColor = document.getElementById('data_out_node_color').value;
+    collideWithScreenEdge = document.getElementById('collide_with_screen_edge').checked;
+    pulseCompleteAction = document.getElementById('pulse_complete').value;
+
+    // Reset simulation
+    initAgents();
+    dataPackets = [];
+    packetsRelayed = 0;
+    dataFlowRate = 0;
+}
+
+// Add explanatory tooltips
+const tooltips = {
+    'amt': 'Total number of agents in the swarm',
+    'type': 'Visual style of the agents',
+    'formation': 'Initial arrangement of the swarm',
+    'periodic_scatter': 'Enables periodic network-wide pulses',
+    'scat_int': 'Time between pulses in seconds',
+    'scat_action': 'Behavior during pulse events',
+    'flocking': 'Enables swarm intelligence behaviors',
+    'cooperate': 'Allows agents to work together and relay data',
+    'show_connections': 'Visualize connections between nearby agents',
+    'show_data': 'Display data packets moving through the network',
+    'data_color': 'Color of data packets',
+    'gravity': 'Strength of the force pulling agents toward the center',
+    'data_in_nodes': 'Number of nodes that generate new data',
+    'data_in_node_color': 'Color of data input nodes',
+    'data_out_nodes': 'Number of nodes that consume data',
+    'data_out_node_color': 'Color of data output nodes',
+    'collide_with_screen_edge': 'Agents bounce off screen edges instead of wrapping',
+    'pulse_complete': 'Action to take when a pulse completes'
+};
+
+for (let [id, text] of Object.entries(tooltips)) {
+    document.getElementById(id).title = text;
+}
+
+// Add event listener for the "Apply Configuration" button
+document.querySelector('form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    updateSimulationParams();
+});
+
+// Add a function to toggle visibility of the info panel
+function toggleInfoPanel() {
+    const infoPanel = document.getElementById('info-panel');
+    infoPanel.style.display = infoPanel.style.display === 'none' ? 'block' : 'none';
+}
+
+// Add a button to toggle the info panel
+const toggleInfoButton = document.createElement('button');
+toggleInfoButton.textContent = 'Toggle Info';
+toggleInfoButton.addEventListener('click', toggleInfoPanel);
+document.body.appendChild(toggleInfoButton);
+
+// Add a function to capture and download the current state as an image
+function captureAndDownload() {
+    const link = document.createElement('a');
+    link.download = 'swarm_simulation.png';
+    link.href = canvas.toDataURL();
+    link.click();
+}
+
+// Add a button to capture and download the image
+const captureButton = document.createElement('button');
+captureButton.textContent = 'Capture Image';
+captureButton.addEventListener('click', captureAndDownload);
+document.body.appendChild(captureButton);
+
+// Add a function to reset the simulation to its initial state
+function resetSimulation() {
+    initAgents();
+    dataPackets = [];
+    packetsRelayed = 0;
+    dataFlowRate = 0;
+    lastPulseTime = 0;
+    isPulsing = false;
+}
+
+// Add a button to reset the simulation
+const resetButton = document.createElement('button');
+resetButton.textContent = 'Reset Simulation';
+resetButton.addEventListener('click', resetSimulation);
+document.body.appendChild(resetButton);
+
+// Add some styling for the new buttons
+const buttonStyle = document.createElement('style');
+buttonStyle.textContent = `
+    #toggleInfoButton, #captureButton, #resetButton {
+        position: fixed;
+        background: rgba(0,15,30,0.8);
+        color: #00FFFF;
+        border: 1px solid #00FFFF;
+        padding: 5px 10px;
+        cursor: pointer;
+        font-family: 'Courier New', monospace;
+        z-index: 1000;
+    }
+    #toggleInfoButton { top: 10px; left: 330px; }
+    #captureButton { top: 10px; left: 430px; }
+    #resetButton { top: 10px; left: 550px; }
+`;
+document.head.appendChild(buttonStyle);
+
+// Initialize the simulation with URL parameters if present
+function initFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    params.forEach((value, key) => {
+        const element = document.getElementById(key);
+        if (element) {
+            if (element.type === 'checkbox') {
+                element.checked = value === 'true' || value === 'on';
+            } else if (element.type === 'color') {
+                element.value = '#' + value;
+            } else {
+                element.value = value;
+            }
+        }
+    });
+    updateSimulationParams();
+}
+
+initFromURL();
+</script>
+</body>
+</html>
